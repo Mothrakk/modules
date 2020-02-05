@@ -1,6 +1,8 @@
 import requests
 import bs4
-from typing import Dict
+import json
+import os
+from typing import Dict, Tuple, List
 
 SHITRS_SKILL_LOOKUP = {0: 'Overall', 1: 'Attack', 2: 'Defence', 3: 'Strength',
     4: 'Constitution', 5: 'Ranged', 6: 'Prayer', 7: 'Magic',
@@ -10,7 +12,7 @@ SHITRS_SKILL_LOOKUP = {0: 'Overall', 1: 'Attack', 2: 'Defence', 3: 'Strength',
     20: 'Farming', 21: 'Runecrafting', 22: 'Hunter', 23: 'Construction',
     24: 'Summoning', 25: 'Dungeoneering', 26: 'Divination', 27: 'Invention'}
 
-def osrs(players: Dict[str, str]) -> Dict[str, Dict[str, int]]:
+def hiscores_osrs(players: Dict[str, str]) -> Dict[str, Dict[str, int]]:
     completed_data = dict()
     for name, url in players.items():
         response = requests.get(url)
@@ -29,10 +31,10 @@ def osrs(players: Dict[str, str]) -> Dict[str, Dict[str, int]]:
         completed_data[name] = player_data
     return completed_data
 
-def shitrs(players: Dict[str, str]) -> Dict[str, Dict[str, int]]:
+def hiscores_shitrs(players: Dict[str, Tuple[str, str]]) -> Dict[str, Dict[str, int]]:
     completed_data = dict()
-    for name, url in players.items():
-        response = requests.get(url)
+    for name in players:
+        response = requests.get(players[name]["hiscores"])
         parsed = bs4.BeautifulSoup(response.content, "lxml")
         player_data = dict()
         main = parsed.find("table", {"class":"headerBgLeft"})
@@ -51,3 +53,19 @@ def shitrs(players: Dict[str, str]) -> Dict[str, Dict[str, int]]:
         completed_data[name] = player_data
     return completed_data
 
+def runemetrics_shitrs(players: Dict[str, Dict[str, str]], path_to_old: str) -> List[str]:
+    msgs = []
+    for name in players:
+        response = requests.get(players[name]["runemetrics"])
+        new_activity_details = [activity["details"] for activity in json.loads(response.content)["activities"]]
+        p = f"{path_to_old}\\{name}.json"
+        if os.path.exists(p):
+            with open(p, "r") as fptr:
+                old_activity_details = json.load(fptr)
+        else:
+            old_activity_details = list()
+        for new in [x for x in new_activity_details if x not in old_activity_details]:
+            msgs.append(f"{players[name]['emoji']} : {new}")
+        with open(p, "w") as fptr:
+            json.dump(new_activity_details, fptr)
+    return msgs

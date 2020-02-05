@@ -12,13 +12,12 @@ import random
 import os
 import traceback
 import math
-from time import strftime
 
 import PyBoiler
 import TTS
 import lootsim
-import hiscores_parsing
 import MarkovHandler
+import hiscores_parsing
 
 my = PyBoiler.Boilerplate()
 
@@ -33,8 +32,16 @@ osrs_players = {
 }
 
 shitrs_players = {
-    "oliver": "https://secure.runescape.com/m=hiscore/compare?user1=Dj+Ollu",
-    "tann": "https://secure.runescape.com/m=hiscore/compare?user1=Hinric"
+    "oliver": {
+        "hiscores": "https://secure.runescape.com/m=hiscore/compare?user1=Dj+Ollu",
+        "runemetrics": r"https://apps.runescape.com/runemetrics/profile/profile?user=dj%20ollu&activities=5",
+        "emoji": "<:thinkingoll:458291587441754122>"
+    },
+    "tann": {
+        "hiscores": "https://secure.runescape.com/m=hiscore/compare?user1=Hinric",
+        "runemetrics": r"https://apps.runescape.com/runemetrics/profile/profile?user=Hinric&activities=5",
+        "emoji": "<:bigpp:667842460382134273>"
+    }
 }
 
 channels = {
@@ -71,6 +78,7 @@ rs_skill_to_emoji = {
     "Slayer": ":skull_crossbones:",
     "Farming": ":seedling:",
     "Runecrafting": ":congratulations:",
+    "Runecraft": ":congratulations:",
     "Hunter": ":rabbit2:",
     "Construction": ":moneybag: :fire:",
     "Summoning": ":ghost:",
@@ -142,8 +150,8 @@ class MothBot:
     async def rs_levels_checking(self):
         await client.wait_until_ready()
         while not client.is_closed():
-            new_unionized_data = hiscores_parsing.osrs(osrs_players)
-            new_unionized_data.update(hiscores_parsing.shitrs(shitrs_players))
+            new_unionized_data = hiscores_parsing.hiscores_osrs(osrs_players)
+            # new_unionized_data.update(hiscores_parsing.hiscores_shitrs(shitrs_players))
 
             for user, stats in new_unionized_data.items():
                 p = my.m_path(f"rs_levels_trackers\\{user}.json")
@@ -181,6 +189,11 @@ class MothBot:
 
                 with open(p, "w") as fptr:
                     json.dump(stats, fptr)
+            
+            for m in hiscores_parsing.runemetrics_shitrs(shitrs_players, my.m_path("rs_activities_tracking")):
+                PyBoiler.Log("Runemetrics uuendus").to_larva()
+                await client.get_channel(channels["grupiteraapia"]).send(m)
+
             await asyncio.sleep(100)
                                 
 
