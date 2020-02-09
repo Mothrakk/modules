@@ -17,7 +17,7 @@ import math
 import PyBoiler
 import TTS
 from lootsim import lootsim
-import MarkovHandler
+from markov import MarkovHandler
 import hiscores_parsing
 
 class Reactable:
@@ -66,7 +66,8 @@ shitrs_players = {
 
 channels = {
     "grupiteraapia": 111523110892617728,
-    "send_to_grupiteraapia": 652606290467487795
+    "send_to_grupiteraapia": 652606290467487795,
+    "jututuba": 653970599521026050
 }
 
 macros = {
@@ -118,7 +119,7 @@ class MothBot:
 
     def __init__(self):
         PyBoiler.Log("Building Markov chains").to_larva()
-        self.markov_handler = MarkovHandler.MarkovHandler(my.m_path("markov_models"))
+        self.markov_handler = MarkovHandler.MarkovHandler(my.m_path("markov\\markov_models"))
         PyBoiler.Log("Building lootsim handler").to_larva()
         self.lootsim_handler = lootsim.LootSimManager(my.m_path("lootsim\\lootsim_data"))
         self.cmds = {
@@ -131,7 +132,7 @@ class MothBot:
         self.logging = True
     
     async def handle_message(self, message) -> None:
-        first_word = message.content.split(" ")[0]
+        first_word = message.content.split(" ")[0].lower()
 
         for r in reactables:
             if r.match(message.content.lower()):
@@ -246,4 +247,7 @@ with open(my.m_path("token.txt"), "r") as fptr:
     token = fptr.read().strip()
 
 client.loop.create_task(mothbot.rs_levels_checking())
+client.loop.create_task(mothbot.markov_handler.chatroom_loop(client,
+                                                             channels["jututuba"],
+                                                             range(60, 120)))
 client.run(token)

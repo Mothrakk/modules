@@ -1,7 +1,17 @@
 import os
 import markovify
-import urllib
+import random
+import asyncio
 import requests
+
+from discord import Client
+
+emoji_of = {
+    "oll": tuple("<:thinkingoll:458291587441754122>"),
+    "nipz": tuple("<:bigpp:667842460382134273>"),
+    "sann": ("<:sann:446325162393206814>", "<:Baldy_MK2:496345452325896192>"),
+    "nugi": ("<:nugi:418542605350076428>", "<:kekn:667842037814525954>")
+}
 
 class GoogleTranslateException(Exception):
     pass
@@ -17,7 +27,7 @@ class MarkovHandler:
                 self.models[name] = markovify.NewlineText.from_json(fptr.read())
         self.err_msg = f"imiteeri [{'|'.join(self.models)}]"
 
-    def translate_string(self, q: str, source="en", target="et"):
+    def translate_string(self, q: str, source: str = "en", target: str = "et"):
         q = requests.utils.quote(q) # URI encode
         response = requests.get(f"https://translate.googleapis.com/translate_a/single?client=gtx&sl={source}&tl={target}&dt=t&q={q}")
         if response.status_code != 200:
@@ -35,7 +45,10 @@ class MarkovHandler:
         if name == "trump":
             s = self.translate_string(s)
         if prefix_name:
-            s = f"{name}: {s}"
+            if name in emoji_of:
+                s = f"{random.choice(emoji_of[name])}: {s}"
+            else:
+                s = f"{name}: {s}"
 
         return s
 
@@ -54,3 +67,11 @@ class MarkovHandler:
             sentences.append(self.generate_sentence(name, prefix_names))
         
         return sentences
+
+    async def chatroom_loop(self, client: Client, channel_id: int, interval_range: range):
+        await client.wait_until_ready()
+        names = tuple(self.models)
+        while not client.is_closed():
+            s = self.generate_sentence(random.choice(names), True)
+            await client.get_channel(channel_id).send(s)
+            await asyncio.sleep(random.choice(interval_range))
