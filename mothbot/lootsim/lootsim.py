@@ -61,7 +61,7 @@ def loot_to_str(loot: List["Drop"]) -> List[str]:
         else:
             working_i += 1
         
-    out[-1] += f"\nKokku {simplify_number(total_gp)} :moneybag:"
+    out[-1] += f"\nKokku {simplify_number(total_gp)} gp :moneybag:"
     return out
 
 class Chance:
@@ -179,9 +179,9 @@ class Drop:
     def get_quantity_and_price(self) -> Tuple[int, int]:
         if "-" not in self.quantity:
             return int(self.quantity), int(self.price)
-        a, b = self.quantity.split("-")
-        count = random.randint(int(a), int(b))
-        price_of_one = int(self.price.split("-")[0])
+        a, b = (int(x) for x in self.quantity.split("-"))
+        count = random.randint(a, b)
+        price_of_one = int(self.price.split("-")[0]) // a
         return count, count * price_of_one
 
 class DropTable:
@@ -232,6 +232,3 @@ class LootSimManager:
                         out += loot_to_str(loot)
                         return out
         return [f"lootsim ({' | '.join(self.simulatable)}) (1 <= kogus <= {LootSimManager.MAX_ALLOWED})"]
-
-if __name__ == "__main__":
-    pass

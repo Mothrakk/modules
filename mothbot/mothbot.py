@@ -8,6 +8,7 @@ import discord
 import requests
 import asyncio
 import json
+import re
 import random
 import os
 import traceback
@@ -15,9 +16,28 @@ import math
 
 import PyBoiler
 import TTS
-import lootsim
+from lootsim import lootsim
 import MarkovHandler
 import hiscores_parsing
+
+class Reactable:
+    def __init__(self,
+                 returnable: str,
+                 re_pattern: str = "",
+                 must_not_contain: list = []):
+        self.returnable = returnable
+        self.re_pattern = re_pattern
+        self.must_not_contain = must_not_contain
+
+    def __str__(self) -> str:
+        return self.returnable
+
+    def match(self, to_test: str) -> str:
+        if self.re_pattern and not re.findall(self.re_pattern, to_test):
+            return False
+        if any((x in to_test for x in self.must_not_contain)):
+            return False
+        return True
 
 my = PyBoiler.Boilerplate()
 
@@ -28,7 +48,7 @@ users = {
 }
 
 osrs_players = {
-    "moth": "https://secure.runescape.com/m=hiscore_oldschool_hardcore_ironman/hiscorepersonal?user1=extra%20nice"
+    "moth": "https://secure.runescape.com/m=hiscore_oldschool_ironman/hiscorepersonal?user1=extra%20nice"
 }
 
 shitrs_players = {
@@ -51,8 +71,13 @@ channels = {
 
 macros = {
     "bruh.mp4":"https://www.youtube.com/watch?v=2ZIpFytCSVc",
-    "amazin":"https://youtu.be/hC6CZKkEh4A"
+    "amazin":"https://youtu.be/hC6CZKkEh4A",
+    "true": """True and yeah that's pretty true that's true and yeah that's true that's true that's true that's pretty true that's pretty true I mean that's true yeah that's true that's true that's fucking true amm that's how it is dude"""
 }
+
+reactables = [
+    Reactable(":COOM:675430755350085706", r"c[ou]+m", [".com"])
+]
 
 rs_skill_to_emoji = {
     "Overall": ":bar_chart:",
@@ -92,18 +117,25 @@ allowed_to_evaluate = {users["moth"]}
 class MothBot:
 
     def __init__(self):
+        PyBoiler.Log("Building Markov chains").to_larva()
         self.markov_handler = MarkovHandler.MarkovHandler(my.m_path("markov_models"))
-        self.lootsim_handler = lootsim.LootSimManager(my.m_path("lootsim_data"))
+        PyBoiler.Log("Building lootsim handler").to_larva()
+        self.lootsim_handler = lootsim.LootSimManager(my.m_path("lootsim\\lootsim_data"))
         self.cmds = {
             "eval":self.evaluate,
             "imiteeri":self.markov_generate,
             "tts":self.tts,
             "lootsim":self.lootsim
         }
+        self.client = client
         self.logging = True
     
     async def handle_message(self, message) -> None:
         first_word = message.content.split(" ")[0]
+
+        for r in reactables:
+            if r.match(message.content.lower()):
+                await message.add_reaction(str(r))
         
         if message.content in macros:
             await message.channel.send(macros[message.content])
@@ -192,7 +224,7 @@ class MothBot:
             
             for m in hiscores_parsing.runemetrics_shitrs(shitrs_players, my.m_path("rs_activities_tracking")):
                 PyBoiler.Log("Runemetrics uuendus").to_larva()
-                await client.get_channel(channels["grupiteraapia"]).send(m)
+                await client.get_channel(channels["grupiteraapia"]).send(" ".join(m.split()))
 
             await asyncio.sleep(100)
                                 
@@ -207,9 +239,8 @@ async def on_ready():
 async def on_message(message):
     if message.channel.id == channels["send_to_grupiteraapia"]:
         await client.get_channel(channels["grupiteraapia"]).send(message.content)
-    else:
-        if message.author.id != client.user.id:
-            await mothbot.handle_message(message)
+    elif message.author.id != client.user.id:
+        await mothbot.handle_message(message)
 
 with open(my.m_path("token.txt"), "r") as fptr:
     token = fptr.read().strip()
