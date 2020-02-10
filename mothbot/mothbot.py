@@ -17,7 +17,7 @@ import math
 import PyBoiler
 import TTS
 from lootsim import lootsim
-from markov import MarkovHandler
+from markov import markov_handler
 import hiscores_parsing
 
 class Reactable:
@@ -33,7 +33,7 @@ class Reactable:
         return self.returnable
 
     def match(self, to_test: str) -> str:
-        if self.re_pattern and not re.findall(self.re_pattern, to_test):
+        if self.re_pattern and not re.search(self.re_pattern, to_test):
             return False
         if any((x in to_test for x in self.must_not_contain)):
             return False
@@ -119,14 +119,15 @@ class MothBot:
 
     def __init__(self):
         PyBoiler.Log("Building Markov chains").to_larva()
-        self.markov_handler = MarkovHandler.MarkovHandler(my.m_path("markov\\markov_models"))
+        self.markov_handler = markov_handler.MarkovHandler(my.m_path("markov\\markov_models"))
         PyBoiler.Log("Building lootsim handler").to_larva()
         self.lootsim_handler = lootsim.LootSimManager(my.m_path("lootsim\\lootsim_data"))
         self.cmds = {
             "eval":self.evaluate,
             "imiteeri":self.markov_generate,
             "tts":self.tts,
-            "lootsim":self.lootsim
+            "lootsim":self.lootsim,
+            "jututuba":self.chatroom_change_interval
         }
         self.client = client
         self.logging = True
@@ -179,6 +180,19 @@ class MothBot:
         messages_to_send = self.lootsim_handler.handle(message)
         for m in messages_to_send:
             await message.channel.send(m)
+    
+    async def chatroom_change_interval(self, message):
+        msg_split = message.content.split(" ")
+        if len(msg_split) >= 2:
+            arg = msg_split[1]
+            if re.search(r"^\d+,\d+$", arg):
+                x, y = (int(x) for x in arg.split(","))
+                if 2 <= y <= 600 and 1 <= x < y:
+                    with open(my.m_path("markov\\interval.txt"), "w") as fptr:
+                        fptr.write(f"{x},{y}")
+                    await message.channel.send(f"intervall nüüd {x}-{y}")
+                    return
+        await message.channel.send("jututuba x,y -- säti intervall sekundites, kus 2 <= y <= 600 ja 1 <= x < y")
 
     async def rs_levels_checking(self):
         await client.wait_until_ready()
@@ -249,5 +263,5 @@ with open(my.m_path("token.txt"), "r") as fptr:
 client.loop.create_task(mothbot.rs_levels_checking())
 client.loop.create_task(mothbot.markov_handler.chatroom_loop(client,
                                                              channels["jututuba"],
-                                                             range(60, 120)))
+                                                             my.m_path("markov\\interval.txt")))
 client.run(token)

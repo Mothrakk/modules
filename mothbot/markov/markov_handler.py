@@ -7,8 +7,8 @@ import requests
 from discord import Client
 
 emoji_of = {
-    "oll": tuple("<:thinkingoll:458291587441754122>"),
-    "nipz": tuple("<:bigpp:667842460382134273>"),
+    "oll": "<:thinkingoll:458291587441754122>",
+    "nipz": "<:bigpp:667842460382134273>",
     "sann": ("<:sann:446325162393206814>", "<:Baldy_MK2:496345452325896192>"),
     "nugi": ("<:nugi:418542605350076428>", "<:kekn:667842037814525954>")
 }
@@ -46,7 +46,10 @@ class MarkovHandler:
             s = self.translate_string(s)
         if prefix_name:
             if name in emoji_of:
-                s = f"{random.choice(emoji_of[name])}: {s}"
+                if type(emoji_of[name]) == str:
+                    s = f"{emoji_of[name]}: {s}"
+                else:
+                    s = f"{random.choice(emoji_of[name])}: {s}"
             else:
                 s = f"{name}: {s}"
 
@@ -68,10 +71,13 @@ class MarkovHandler:
         
         return sentences
 
-    async def chatroom_loop(self, client: Client, channel_id: int, interval_range: range):
+    async def chatroom_loop(self, client: Client, channel_id: int, path_to_interval: str):
         await client.wait_until_ready()
         names = tuple(self.models)
         while not client.is_closed():
+            with open(path_to_interval, "r") as fptr:
+                a, b = (int(x) for x in fptr.read().split(","))
+            interval_range = range(a, b)
             s = self.generate_sentence(random.choice(names), True)
             await client.get_channel(channel_id).send(s)
             await asyncio.sleep(random.choice(interval_range))
