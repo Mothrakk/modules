@@ -16,9 +16,9 @@ import math
 
 import PyBoiler
 import TTS
-from lootsim import lootsim
-from markov import markov_handler
-import hiscores_parsing
+from runescape import hiscores_parsing
+from runescape.lootsim.lootsim import LootSimManager
+from markov.markov_handler import MarkovHandler
 
 class Reactable:
     def __init__(self,
@@ -119,9 +119,9 @@ class MothBot:
 
     def __init__(self):
         PyBoiler.Log("Building Markov chains").to_larva()
-        self.markov_handler = markov_handler.MarkovHandler(my.m_path("markov\\markov_models"))
+        self.markov_handler = MarkovHandler(my.m_path("markov"))
         PyBoiler.Log("Building lootsim handler").to_larva()
-        self.lootsim_handler = lootsim.LootSimManager(my.m_path("lootsim\\lootsim_data"))
+        self.lootsim_handler = LootSimManager(my.m_path("runescape\\lootsim\\lootsim_data"))
         self.cmds = {
             "eval":self.evaluate,
             "imiteeri":self.markov_generate,
@@ -201,7 +201,7 @@ class MothBot:
             # new_unionized_data.update(hiscores_parsing.hiscores_shitrs(shitrs_players))
 
             for user, stats in new_unionized_data.items():
-                p = my.m_path(f"rs_levels_trackers\\{user}.json")
+                p = my.m_path(f"runescape\\rs_levels_trackers\\{user}.json")
 
                 if os.path.exists(p):
                     msg_to_send = list()
@@ -237,7 +237,7 @@ class MothBot:
                 with open(p, "w") as fptr:
                     json.dump(stats, fptr)
             
-            for m in hiscores_parsing.runemetrics_shitrs(shitrs_players, my.m_path("rs_activities_tracking")):
+            for m in hiscores_parsing.runemetrics_shitrs(shitrs_players, my.m_path("runescape\\rs_activities_tracking")):
                 PyBoiler.Log("Runemetrics uuendus").to_larva()
                 await client.get_channel(channels["grupiteraapia"]).send(" ".join(m.split()))
 
@@ -261,7 +261,5 @@ with open(my.m_path("token.txt"), "r") as fptr:
     token = fptr.read().strip()
 
 client.loop.create_task(mothbot.rs_levels_checking())
-client.loop.create_task(mothbot.markov_handler.chatroom_loop(client,
-                                                             channels["jututuba"],
-                                                             my.m_path("markov\\interval.txt")))
+client.loop.create_task(mothbot.markov_handler.chatroom_loop(client, channels["jututuba"]))
 client.run(token)

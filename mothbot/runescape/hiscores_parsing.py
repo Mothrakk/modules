@@ -4,7 +4,6 @@ import json
 import os
 from typing import Dict, Tuple, List
 
-
 SHITRS_SKILL_LOOKUP = {0: 'Overall', 1: 'Attack', 2: 'Defence', 3: 'Strength',
     4: 'Constitution', 5: 'Ranged', 6: 'Prayer', 7: 'Magic',
     8: 'Cooking', 9: 'Woodcutting', 10: 'Fletching', 11: 'Fishing',
