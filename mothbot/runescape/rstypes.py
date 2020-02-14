@@ -44,16 +44,9 @@ class StatEmojis:
 class RunescapeType:
     OSRS = 0
     RS3 = 1
-
-class OSRS(RunescapeType):
     def __init__(self, url: str):
         self.url = url
-        self.type = RunescapeType.OSRS
-
-class RS3(RunescapeType):
-    def __init__(self, url: str):
-        self.url = url
-        self.type = RunescapeType.RS3
+        self.type = RunescapeType.RS3 if "runemetrics" in url else RunescapeType.OSRS
 
 class Stat:
     def __init__(self, name: str, rank: int, level: int, xp: int):
@@ -61,9 +54,6 @@ class Stat:
         self.rank = rank
         self.level = level
         self.xp = xp
-
-    def __str__(self) -> str:
-        return self.name
 
     def __lt__(self, other) -> bool:
         return self.level < other.level
@@ -161,7 +151,7 @@ class StatCollection:
 
     @property
     def ordered(self) -> List[Stat]:
-        return sorted(self.stats.values(), key=lambda s: s.name)
+        return sorted(self.stats.values(), key=lambda stat: stat.name)
 
     @property
     def _dict(self) -> Dict[str, Dict[str, int]]:
@@ -172,18 +162,3 @@ class StatCollection:
     @property
     def empty(self) -> bool:
         return not len(self.stats)
-        
-if __name__ == "__main__":
-    from sys import argv, path
-    from os import getcwd
-    path.append("\\".join(getcwd().split("\\")[:-1]))
-    from mothtypes import UserCollection
-
-    users = UserCollection()
-    
-    for user in users.runescapers[RunescapeType.OSRS]:
-        #stats_collection = StatCollection(user.runescape.url)
-        #stats_collection.write("testing.json")
-        stats_collection = StatCollection("testing.json")
-        print(str(stats_collection))
-        print(stats_collection.get("Attack"))

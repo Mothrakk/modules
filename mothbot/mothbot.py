@@ -17,7 +17,7 @@ import PyBoiler
 from TTS import TTS
 from runescape.lootsim.lootsim import LootSimManager
 from markov.markov_handler import MarkovHandler
-from mothtypes import UserCollection
+from mothtypes import UserCollection, Channel
 from runescape.progression.progression import ProgressManager
 
 class Reactable:
@@ -43,17 +43,6 @@ my = PyBoiler.Boilerplate()
 
 client = discord.Client()
 
-users = {
-    "moth": 127858900933279745
-}
-
-channels = {
-    "grupiteraapia": 111523110892617728,
-    "testing": 190793526072573952,
-    "send_to_grupiteraapia": 652606290467487795,
-    "jututuba": 653970599521026050
-}
-
 macros = {
     "bruh.mp4":"https://www.youtube.com/watch?v=2ZIpFytCSVc",
     "amazin":"https://youtu.be/hC6CZKkEh4A",
@@ -64,8 +53,6 @@ reactables = [
     Reactable(":COOM:675430755350085706", r"c[ou]{2,}m")
 ]
 
-allowed_to_evaluate = {users["moth"]}
-
 class MothBot:
     def __init__(self):
         self.user_collection = UserCollection()
@@ -75,8 +62,8 @@ class MothBot:
         self.lootsim_handler = LootSimManager(my.m_path("runescape\\lootsim\\lootsim_data"))
         PyBoiler.Log("Building progress manager").to_larva()
         self.progress_manager = ProgressManager(self.user_collection,
-                                                my.m_path("runescape\\osrs"),
-                                                my.m_path("runesacpe\\rsthree"))
+                                                my.m_path("runescape\\data\\osrs"),
+                                                my.m_path("runesacpe\\data\\rs3"))
         self.cmds = {
             "eval":self.evaluate,
             "imiteeri":self.markov_generate,
@@ -114,7 +101,10 @@ class MothBot:
             PyBoiler.Log(f"{message.author.name}: {message.content}").to_larva()
 
     async def evaluate(self, message):
-        r = eval(" ".join(message.content.split(" ")[1:])) if message.author.id in allowed_to_evaluate else "Ei :)"
+        if message.author.id in self.user_collection.can_evaluate:
+            r = eval(" ".join(message.content.split(" ")[1:]))
+        else:
+            r = "Ei :)"
         await message.channel.send(r)
 
     async def markov_generate(self, message):
@@ -156,14 +146,14 @@ async def on_ready():
 
 @client.event
 async def on_message(message):
-    if message.channel.id == channels["send_to_grupiteraapia"]:
-        await client.get_channel(channels["grupiteraapia"]).send(message.content)
+    if message.channel.id == Channel.Send_To_Grupiteraapia:
+        await client.get_channel(Channel.Grupiteraapia).send(message.content)
     elif message.author.id != client.user.id:
         await mothbot.handle_message(message)
 
 with open(my.m_path("token.txt"), "r") as fptr:
     token = fptr.read().strip()
 
-client.loop.create_task(mothbot.progress_manager.loop(client, channels["testing"], 8))
-client.loop.create_task(mothbot.markov_handler.chatroom_loop(client, channels["jututuba"]))
+client.loop.create_task(mothbot.progress_manager.loop(client, Channel.Grupiteraapia))
+client.loop.create_task(mothbot.markov_handler.chatroom_loop(client, Channel.Jututuba))
 client.run(token)

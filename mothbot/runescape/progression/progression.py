@@ -26,16 +26,3 @@ class ProgressManager:
             if len(out):
                 await client.get_channel(channel_id).send("\n\n".join(out))   
             await asyncio.sleep(interval_seconds)
-
-if __name__ == "__main__":
-    users = UserCollection()
-    datapath_osrs = "osrs"
-    for user in users.runescapers[RunescapeType.OSRS]:
-        old = StatCollection(f"{datapath_osrs}\\{user.name}.json")
-        new = StatCollection(user.runescape.url)
-        delta = new.delta(old)
-        if not delta.empty:
-            print(str(delta))
-        else:
-            print("EMPTY")
-        new.write(f"{datapath_osrs}\\{user.name}.json")
