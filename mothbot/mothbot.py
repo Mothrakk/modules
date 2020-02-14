@@ -41,6 +41,10 @@ class Reactable:
 
 my = PyBoiler.Boilerplate()
 
+if not os.path.exists(my.m_path("token.txt")):
+    print("Missing token. Place token into the 'token.txt' file.")
+    exit(-1)
+
 client = discord.Client()
 
 macros = {
@@ -151,9 +155,13 @@ async def on_message(message):
     elif message.author.id != client.user.id:
         await mothbot.handle_message(message)
 
+
 with open(my.m_path("token.txt"), "r") as fptr:
     token = fptr.read().strip()
 
-client.loop.create_task(mothbot.progress_manager.loop(client, Channel.Grupiteraapia))
-client.loop.create_task(mothbot.markov_handler.chatroom_loop(client, Channel.Jututuba))
-client.run(token)
+try:
+    client.loop.create_task(mothbot.progress_manager.loop(client, Channel.Grupiteraapia))
+    client.loop.create_task(mothbot.markov_handler.chatroom_loop(client, Channel.Jututuba))
+    client.run(token)
+except discord.errors.LoginFailure:
+    print("Connection to the Discord API was disrupted. Bad token?")
