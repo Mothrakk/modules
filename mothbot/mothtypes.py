@@ -32,6 +32,13 @@ class User:
         if hasattr(self.emojis, "__iter__"):
             return random.choice(self.emojis)
 
+    @property
+    def prefix(self) -> str:
+        pref = self.emoji
+        if pref is None:
+            pref = str(self)
+        return pref
+
 class UserCollection:
     def __init__(self):
         self.users = build_userbase()

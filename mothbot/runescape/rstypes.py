@@ -162,3 +162,44 @@ class StatCollection:
     @property
     def empty(self) -> bool:
         return not len(self.stats)
+
+class ActivityFeed:
+    def __init__(self, get_from: str = None):
+        self.activities = list()
+        if get_from is not None:
+            if get_from.startswith("http"):
+                self.fetch(get_from)
+            else:
+                self.read(get_from)
+
+    def add(self, activity: str) -> None:
+        self.activities.append(activity)
+
+    def fetch(self, url: str) -> None:
+        response = requests.get(url)
+        parsed = json.loads(response.content)
+        self.activities = [parsed["activities"][i]["details"] for i in range(len(parsed["activities"]))]
+
+    def read(self, path: str):
+        if os.path.exists(path):
+            with open(path, "r") as fptr:
+                self.activities = fptr.read().strip().split("\n")
+
+    def write(self, path: str):
+        if "\\" in path:
+            os.makedirs("\\".join(path.split("\\")[:-1]), exist_ok=True)
+        with open(path, "w") as fptr:
+            fptr.write("\n".join(self.activities))
+
+    def difference(self, other: "ActivityFeed") -> "ActivityFeed":
+        diff = ActivityFeed()
+        for activity in self.activities:
+            if activity not in other.activities:
+                diff.add(activity)
+        return diff
+
+    def to_string(self, prefix: str) -> str:
+        return "\n".join((f"{prefix}: {activity}" for activity in self.activities))
+
+    def empty(self) -> bool:
+        return not len(self.activities)

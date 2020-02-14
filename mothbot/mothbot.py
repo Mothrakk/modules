@@ -67,7 +67,7 @@ class MothBot:
         PyBoiler.Log("Building progress manager").to_larva()
         self.progress_manager = ProgressManager(self.user_collection,
                                                 my.m_path("runescape\\data\\osrs"),
-                                                my.m_path("runesacpe\\data\\rs3"))
+                                                my.m_path("runescape\\data\\rs3"))
         self.cmds = {
             "eval":self.evaluate,
             "imiteeri":self.markov_generate,
