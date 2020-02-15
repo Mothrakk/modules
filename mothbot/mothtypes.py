@@ -63,6 +63,25 @@ class UserCollection:
     def has(self, key: Union[str, int]) -> bool:
         return key in self.key_to_userobj
 
+class Reactable:
+    def __init__(self,
+                 returnable: str,
+                 re_pattern: str = "",
+                 must_not_contain: list = []):
+        self.returnable = returnable
+        self.re_pattern = re_pattern
+        self.must_not_contain = must_not_contain
+
+    def __str__(self) -> str:
+        return self.returnable
+
+    def match(self, to_test: str) -> str:
+        if self.re_pattern and not re.search(self.re_pattern, to_test):
+            return False
+        if any((x in to_test for x in self.must_not_contain)):
+            return False
+        return True
+
 def build_userbase() -> Tuple[User]:
     return (
         User(

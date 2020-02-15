@@ -19,7 +19,7 @@ class ProgressManager:
             delta = new.delta(old)
             if not delta.empty:
                 out.append(delta.build_delta_string(old, str(user)))
-            new.write(f"{self.datapath_osrs}\\{user.name}.json")
+                new.write(f"{self.datapath_osrs}\\{user.name}.json")
         return out
 
     def check_rs3_progress(self) -> List[str]:
@@ -30,7 +30,7 @@ class ProgressManager:
             delta = new.difference(old)
             if not delta.empty():
                 out.append(delta.to_string(user.prefix))
-            new.write(f"{self.datapath_rs3}\\{user.name}.txt")
+                new.write(f"{self.datapath_rs3}\\{user.name}.txt")
         return out
 
     async def loop(self, client: Client, channel_id: int, interval_seconds: int = 60) -> None:

@@ -14,30 +14,10 @@ import traceback
 import math
 
 import PyBoiler
-from TTS import TTS
 from runescape.lootsim.lootsim import LootSimManager
 from markov.markov_handler import MarkovHandler
-from mothtypes import UserCollection, Channel
+from mothtypes import UserCollection, Channel, Reactable
 from runescape.progression.progression import ProgressManager
-
-class Reactable:
-    def __init__(self,
-                 returnable: str,
-                 re_pattern: str = "",
-                 must_not_contain: list = []):
-        self.returnable = returnable
-        self.re_pattern = re_pattern
-        self.must_not_contain = must_not_contain
-
-    def __str__(self) -> str:
-        return self.returnable
-
-    def match(self, to_test: str) -> str:
-        if self.re_pattern and not re.search(self.re_pattern, to_test):
-            return False
-        if any((x in to_test for x in self.must_not_contain)):
-            return False
-        return True
 
 my = PyBoiler.Boilerplate()
 
@@ -61,7 +41,7 @@ class MothBot:
     def __init__(self):
         self.user_collection = UserCollection()
         PyBoiler.Log("Building Markov chains").to_larva()
-        self.markov_handler = MarkovHandler(my.m_path("markov"))
+        self.markov_handler = MarkovHandler(my.m_path("markov"), self.user_collection)
         PyBoiler.Log("Building lootsim handler").to_larva()
         self.lootsim_handler = LootSimManager(my.m_path("runescape\\lootsim\\lootsim_data"))
         PyBoiler.Log("Building progress manager").to_larva()
@@ -71,7 +51,6 @@ class MothBot:
         self.cmds = {
             "eval":self.evaluate,
             "imiteeri":self.markov_generate,
-            "tts":self.tts,
             "lootsim":self.lootsim,
             "jututuba":self.chatroom_change_interval
         }
@@ -119,10 +98,6 @@ class MothBot:
             count = int(spl[2]) if len(spl) > 2 and spl[2].isnumeric() else 1
             results = self.markov_handler.generate_sentences(spl[1], count, True)
             await message.channel.send("\n".join(results))
-
-    async def tts(self, message):
-        tts = TTS(message, my.m_path("temp.wav"))
-        await tts.work()
 
     async def lootsim(self, message):
         messages_to_send = self.lootsim_handler.handle(message)

@@ -4,16 +4,8 @@ import random
 import asyncio
 import requests
 
+from mothtypes import UserCollection
 from discord import Client
-
-emoji_of = {
-    "oll": "<:thinkingoll:458291587441754122>",
-    "nipz": "<:bigpp:667842460382134273>",
-    "markus": "<:makuW:676220791649730590>",
-    "trump": "<:trump:676223879345340451>",
-    "sann": ("<:sann:446325162393206814>", "<:Baldy_MK2:496345452325896192>"),
-    "nugi": ("<:nugi:418542605350076428>", "<:kekn:667842037814525954>")
-}
 
 class GoogleTranslateException(Exception):
     pass
@@ -22,7 +14,8 @@ class MarkovHandler:
     MAX_GEN_AT_ONCE = 5
     NAMES_TO_TRANSLATE = {"trump"}
 
-    def __init__(self, path_to_module: str):
+    def __init__(self, path_to_module: str, user_collection: UserCollection):
+        self.user_collection = user_collection
         self.models = dict()
         self.path_to_interval = f"{path_to_module}\\interval.txt"
         for filename in os.listdir(f"{path_to_module}\\markov_models"):
@@ -49,13 +42,7 @@ class MarkovHandler:
         if name in MarkovHandler.NAMES_TO_TRANSLATE:
             s = self.translate_string(s)
         if prefix_name:
-            if name in emoji_of:
-                if type(emoji_of[name]) is str:
-                    s = f"{emoji_of[name]}: {s}"
-                else:
-                    s = f"{random.choice(emoji_of[name])}: {s}"
-            else:
-                s = f"{name}: {s}"
+            s = f"{self.user_collection.get(name).prefix}: {s}"
 
         return s
 
