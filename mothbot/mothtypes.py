@@ -1,4 +1,6 @@
 import random
+import re
+import os
 
 from runescape.rstypes import RunescapeType
 from typing import Union, Tuple
@@ -21,6 +23,7 @@ class User:
         self.runescape = runescape
         self.can_evaluate = can_evaluate
         self.id = id
+        self.tokens_account = TokensAccount(self)
         
     def __str__(self) -> str:
         return self.name.capitalize()
@@ -39,8 +42,31 @@ class User:
             pref = str(self)
         return pref
 
+class TokensAccount:
+    PATH_TO_TOKENS = "" # Assigned to in the init of UserCollection
+    DEFAULT_TOKENS_COUNT = "3000"
+    
+    def __init__(self, user: User):
+        self.path = f"{TokensAccount.PATH_TO_TOKENS}\\{user.name}.txt"
+        if not os.path.exists(self.path):
+            with open(self.path, "w") as fptr:
+                fptr.write(TokensAccount.DEFAULT_TOKENS_COUNT)
+
+    def change(self, amount: Union[str, int]) -> None:
+        with open(self.path, "r") as fptr:
+            old = int(fptr.read())
+        with open(self.path, "w") as fptr:
+            fptr.write(str(old + int(amount)))
+
+    @property
+    def amount(self) -> int:
+        with open(self.path, "r") as fptr:
+            return int(fptr.read())
+
 class UserCollection:
-    def __init__(self):
+    def __init__(self, path_to_casino_tokens: str):
+        TokensAccount.PATH_TO_TOKENS = path_to_casino_tokens
+        os.makedirs(path_to_casino_tokens, exist_ok=True)
         self.users = build_userbase()
         self.runescapers = {
             RunescapeType.RS3: list(),
@@ -56,6 +82,7 @@ class UserCollection:
                 self.can_evaluate.append(user.id)
             if isinstance(user.runescape, RunescapeType):
                 self.runescapers[user.runescape.type].append(user)
+            
     
     def get(self, key: Union[str, int]) -> User:
         return self.key_to_userobj[key]
@@ -117,5 +144,9 @@ def build_userbase() -> Tuple[User]:
             "nipz",
             emojis="<:bigpp:667842460382134273>",
             runescape=RunescapeType("https://apps.runescape.com/runemetrics/profile/profile?user=hinric")
+        ),
+        User(
+            "trump",
+            emojis="<:trump:676223879345340451>"
         )
     )
