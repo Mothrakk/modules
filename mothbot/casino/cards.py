@@ -24,7 +24,7 @@ class Card:
 
     def __str__(self) -> str:
         if not self.hidden:
-            return f"{self.rank} of {self.suit}"
+            return f":{self.suit.lower()}: {self.rank} of {self.suit}"
         return "(Peidus kaart)"
 
 class Deck:
