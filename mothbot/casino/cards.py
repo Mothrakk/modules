@@ -4,14 +4,14 @@ import itertools
 from typing import List, Union
 
 class Card:
-    def __init__(self, suit: str, rank: Union[str, int], hidden: bool = False):
-        """Create a Card object.
+    """Create a Card object.
 
-        Parameters:\n
-        `suit`: Suit of the card.\n
-        `rank`: Rank of the card. Expecting a type `int` for ranks 2-10; otherwise `str`.\n
-        `hidden` Boolean for deciding if this card should be hidden from the player on the playing table.
-        """
+    Parameters:\n
+    `suit`: Suit of the card.\n
+    `rank`: Rank of the card. Expecting a type `int` for ranks 2-10; otherwise `str`.\n
+    `hidden` Boolean for deciding if this card should be hidden from the player on the playing table.
+    """
+    def __init__(self, suit: str, rank: Union[str, int], hidden: bool = False):
         self.suit = suit
         self.rank = rank
         self.hidden = hidden
@@ -28,18 +28,18 @@ class Card:
         return "(Peidus kaart)"
 
 class Deck:
+    """Create a Deck object.
+
+    Parameters:\n
+    `populate_cards`: Boolean for determining if the deck should populate itself into a standard (52-card) deck.
+    Set to True for populating, otherwise the deck will remain empty.\n
+    `shuffle`: Boolean for determining if the deck should shuffle itself after populating. This argument has no effect
+    and does nothing if `populate_cards` is False.
+    """
     SUITS = ("Clubs", "Diamonds", "Hearts", "Spades")
     RANKS = tuple(range(2, 11)) + ("Ace", "King", "Queen", "Jack")
 
     def __init__(self, populate_cards: bool = True, shuffle: bool = True):
-        """Create a Deck object.
-
-        Parameters:\n
-        `populate_cards`: Boolean for determining if the deck should populate itself into a standard (52-card) deck.
-        Set to True for populating, otherwise the deck will remain empty.\n
-        `shuffle`: Boolean for determining if the deck should shuffle itself after populating. This argument has no effect
-        and does nothing if `populate_cards` is False.
-        """
         self.deck = list()
         if populate_cards:
             for suit, rank in itertools.product(Deck.SUITS, Deck.RANKS):
@@ -49,8 +49,8 @@ class Deck:
 
     def __str__(self) -> str:
         if len(self.deck):
-            return "```\n" + "\n".join((str(c) for c in self.deck)) + "\n```"
-        return ""
+            return "\n".join((str(c) for c in self.deck))
+        return "--"
 
     def add(self, card: Card) -> None:
         """Append `card` to the top of the deck."""

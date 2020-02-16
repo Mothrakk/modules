@@ -1,17 +1,20 @@
 import random
 import re
 import os
+import asyncio
 
-from enum import Enum
+from discord import Client
 from runescape.rstypes import RunescapeType
 from typing import Union, Tuple, List
 
-class Channel(Enum):
+class Channel:
     """Enum-like class for the relevant Discord channels' IDs."""
     Grupiteraapia = 111523110892617728
     Testing = 190793526072573952
     Send_To_Grupiteraapia = 652606290467487795
     Jututuba = 653970599521026050
+    Kasiino = 678697270841180170
+    Hacks = 445775276727861258
     
 class User:
     def __init__(self,
@@ -51,6 +54,8 @@ class User:
         return hash(self.id)
 
     def __eq__(self, other: "User") -> bool:
+        if type(other) is int:
+            return self.id == other
         return self.id == other.id
     
     @property
@@ -99,6 +104,10 @@ class TokensAccount:
             fptr.write(str(old + amount))
             fptr.truncate()
 
+    def can_bet(self, amount: int) -> bool:
+        """Returns a boolean on if the given `User` could bet `amount` tokens."""
+        return self.amount >= amount
+
     @property
     def amount(self) -> int:
         """Returns the current amount of tokens the user has, casted to `int`."""
@@ -106,6 +115,9 @@ class TokensAccount:
             return int(fptr.read())
 
 class UserCollection:
+    TOKEN_SANTA_WAIT_TIME = 60*60
+    TOKEN_SANTA_RANGE_TO_ADD = range(1000, 2000)
+
     def __init__(self, path_to_casino_tokens: str):
         TokensAccount.PATH_TO_TOKENS = path_to_casino_tokens
         os.makedirs(path_to_casino_tokens, exist_ok=True)
@@ -136,6 +148,16 @@ class UserCollection:
     def has(self, key: Union[str, int]) -> bool:
         """Returns `True` if `key` is in the user lookup table, else `False`."""
         return key in self.key_to_userobj
+
+    async def token_incrementer(self, client: Client, channel_id: int):
+        await client.wait_until_ready()
+        while not client.is_closed():
+            await asyncio.sleep(UserCollection.TOKEN_SANTA_WAIT_TIME)
+            amount = random.choice(UserCollection.TOKEN_SANTA_RANGE_TO_ADD)
+            for user in self.users:
+                if hasattr(user, "tokens_account"):
+                    user.tokens_account.change(amount)
+            await client.get_channel(channel_id).send(f"Kõik kasiinovõimelised said {amount} tokenit!")
 
 class Reactable:
     def __init__(self,
@@ -173,30 +195,39 @@ def build_userbase() -> Tuple[User]:
         User(
             "oll",
             emojis="<:thinkingoll:458291587441754122>",
-            runescape=RunescapeType("https://apps.runescape.com/runemetrics/profile/profile?user=dj ollu&activities=5")
+            runescape=RunescapeType("https://apps.runescape.com/runemetrics/profile/profile?user=dj ollu&activities=5"),
+            id=111495179520745472
         ),
         User(
             "sann",
             emojis=(
                 "<:sann:446325162393206814>",
                 "<:Baldy_MK2:496345452325896192>"
-            )
+            ),
+            id=119883045321965568
         ),
         User(
             "maku",
-            emojis="<:makuW:676220791649730590>"
+            emojis="<:makuW:676220791649730590>",
+            id=111522630229635072
         ),
         User(
             "nugi",
             emojis=(
                 "<:kekn:667842037814525954>",
                 "<:nugi:418542605350076428>"
-            )
+            ),
+            id=115522019327606791
         ),
         User(
             "nipz",
             emojis="<:bigpp:667842460382134273>",
-            runescape=RunescapeType("https://apps.runescape.com/runemetrics/profile/profile?user=hinric")
+            runescape=RunescapeType("https://apps.runescape.com/runemetrics/profile/profile?user=hinric"),
+            id=115871962735181833
+        ),
+        User(
+            "kairo",
+            id=197022599060914187
         ),
         User(
             "trump",

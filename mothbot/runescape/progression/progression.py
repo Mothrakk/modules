@@ -7,7 +7,7 @@ from typing import List
 
 class ProgressManager:
     def __init__(self, user_collection: UserCollection, datapath_osrs: str, datapath_rs3: str):
-        self.user_collection = UserCollection()
+        self.user_collection = user_collection
         self.datapath_osrs = datapath_osrs
         self.datapath_rs3 = datapath_rs3
 

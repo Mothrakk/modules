@@ -12,12 +12,13 @@ import random
 import os
 import traceback
 import math
-
 import PyBoiler
+
 from runescape.lootsim.lootsim import LootSimManager
 from markov.markov_handler import MarkovHandler
 from mothtypes import UserCollection, Channel, Reactable
 from runescape.progression.progression import ProgressManager
+from casino.blackjack import BlackjackTable
 
 my = PyBoiler.Boilerplate()
 
@@ -39,7 +40,9 @@ reactables = [
 
 class MothBot:
     def __init__(self):
-        self.user_collection = UserCollection()
+        self.user_collection = UserCollection(my.m_path("casino\\tokens"))
+        PyBoiler.Log("Building casino").to_larva()
+        self.blackjack_table = BlackjackTable(client, Channel.Kasiino, self.user_collection)
         PyBoiler.Log("Building Markov chains").to_larva()
         self.markov_handler = MarkovHandler(my.m_path("markov"), self.user_collection)
         PyBoiler.Log("Building lootsim handler").to_larva()
@@ -52,9 +55,14 @@ class MothBot:
             "eval":self.evaluate,
             "imiteeri":self.markov_generate,
             "lootsim":self.lootsim,
-            "jututuba":self.chatroom_change_interval
+            "jututuba":self.chatroom_change_interval,
+            "tokens":self.get_tokens,
+            "tokenshiscores":self.tokens_hiscore
         }
-        self.logging = True
+        for c in BlackjackTable.VALID_COMMANDS:
+            self.cmds[c] = self.blackjack_table.handle_input
+            
+        self.logging = False
     
     async def handle_message(self, message) -> None:
         first_word = message.content.split(" ")[0].lower()
@@ -115,7 +123,25 @@ class MothBot:
                         fptr.write(f"{x},{y}")
                     await message.channel.send(f"intervall nüüd {x}-{y}")
                     return
-        await message.channel.send("jututuba x,y -- säti intervall sekundites, kus 2 <= y <= 600 ja 1 <= x < y")              
+        await message.channel.send("jututuba x,y -- säti intervall sekundites, kus 2 <= y <= 600 ja 1 <= x < y") 
+
+    async def get_tokens(self, message):
+        if self.user_collection.has(message.author.id):
+            await message.channel.send(
+                f"Sul on {self.user_collection.get(message.author.id).tokens_account.amount} tokenit"
+            )
+        else:
+            await message.channel.send(f"{message.author.name} - sul pole tokenite rahakotti")
+
+    async def tokens_hiscore(self, message):
+        data = dict()
+        out = ["Kasiino hiscores"]
+        for user in self.user_collection.users:
+            if hasattr(user, "tokens_account"):
+                data[str(user)] = user.tokens_account.amount
+        for name in sorted(data, key=lambda name: data[name], reverse=True):
+            out.append(f"{name} - {data[name]}")
+        await message.channel.send("\n".join(out))
 
 mothbot = MothBot()
 
@@ -130,13 +156,13 @@ async def on_message(message):
     elif message.author.id != client.user.id:
         await mothbot.handle_message(message)
 
-
 with open(my.m_path("token.txt"), "r") as fptr:
     token = fptr.read().strip()
 
 try:
     client.loop.create_task(mothbot.progress_manager.loop(client, Channel.Grupiteraapia))
     client.loop.create_task(mothbot.markov_handler.chatroom_loop(client, Channel.Jututuba))
+    client.loop.create_task(mothbot.user_collection.token_incrementer(client, Channel.Kasiino))
     client.run(token)
 except discord.errors.LoginFailure:
     print("Connection to the Discord API was disrupted. Bad token?")
