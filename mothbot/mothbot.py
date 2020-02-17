@@ -19,6 +19,7 @@ from markov.markov_handler import MarkovHandler
 from mothtypes import UserCollection, Channel, Reactable
 from runescape.progression.progression import ProgressManager
 from casino.blackjack import BlackjackTable
+from remindme.remindme import RemindMeManager
 
 my = PyBoiler.Boilerplate()
 
@@ -51,13 +52,16 @@ class MothBot:
         self.progress_manager = ProgressManager(self.user_collection,
                                                 my.m_path("runescape\\data\\osrs"),
                                                 my.m_path("runescape\\data\\rs3"))
+        self.remindme_manager = RemindMeManager(client, my.m_path("remindme\\tracking"))
         self.cmds = {
+            "mothbot":self.help,
             "eval":self.evaluate,
             "imiteeri":self.markov_generate,
             "lootsim":self.lootsim,
             "jututuba":self.chatroom_change_interval,
             "tokens":self.get_tokens,
-            "tokenshiscores":self.tokens_hiscore
+            "tokenshiscores":self.tokens_hiscore,
+            "remindme":self.remindme_manager.new_tracker
         }
         for c in BlackjackTable.VALID_COMMANDS:
             self.cmds[c] = self.blackjack_table.handle_input
@@ -90,6 +94,9 @@ class MothBot:
 
         if self.logging:
             PyBoiler.Log(f"{message.author.name}: {message.content}").to_larva()
+
+    async def help(self, message):
+        await message.channel.send("; ".join(self.cmds))
 
     async def evaluate(self, message):
         if message.author.id in self.user_collection.can_evaluate:
@@ -163,6 +170,7 @@ try:
     client.loop.create_task(mothbot.progress_manager.loop(client, Channel.Grupiteraapia))
     client.loop.create_task(mothbot.markov_handler.chatroom_loop(client, Channel.Jututuba))
     client.loop.create_task(mothbot.user_collection.token_incrementer(client, Channel.Kasiino))
+    client.loop.create_task(mothbot.remindme_manager.loop())
     client.run(token)
 except discord.errors.LoginFailure:
     print("Connection to the Discord API was disrupted. Bad token?")
