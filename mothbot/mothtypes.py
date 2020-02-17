@@ -96,13 +96,15 @@ class TokensAccount:
     def change(self, amount: int) -> None:
         """Add/subtract to/from the user's token count.
         
-        Set `amount` to positive for incrementation and to negative for decrementation.
+        Set `amount` to positive for incrementation and to negative for decrementation.\n
+        Does nothing if amount == 0.
         """
-        with open(self.path, "r+") as fptr:
-            old = int(fptr.read())
-            fptr.seek(0)
-            fptr.write(str(old + amount))
-            fptr.truncate()
+        if amount:
+            with open(self.path, "r+") as fptr:
+                old = int(fptr.read())
+                fptr.seek(0)
+                fptr.write(str(old + amount))
+                fptr.truncate()
 
     def can_bet(self, amount: int) -> bool:
         """Returns a boolean on if the given `User` could bet `amount` tokens."""
@@ -117,6 +119,7 @@ class TokensAccount:
 class UserCollection:
     TOKEN_SANTA_WAIT_TIME = 60*60
     TOKEN_SANTA_RANGE_TO_ADD = range(1000, 2000)
+    TOKEN_SANTA_MAX = 50_000
 
     def __init__(self, path_to_casino_tokens: str):
         TokensAccount.PATH_TO_TOKENS = path_to_casino_tokens
@@ -156,8 +159,11 @@ class UserCollection:
             amount = random.choice(UserCollection.TOKEN_SANTA_RANGE_TO_ADD)
             for user in self.users:
                 if hasattr(user, "tokens_account"):
-                    user.tokens_account.change(amount)
-            await client.get_channel(channel_id).send(f"Kõik kasiinovõimelised said {amount} tokenit!")
+                    if user.tokens_account.amount + amount > UserCollection.TOKEN_SANTA_MAX:
+                        user.tokens_account.change(UserCollection.TOKEN_SANTA_MAX - user.tokens_account.amount)
+                    else:
+                        user.tokens_account.change(amount)
+            await client.get_channel(channel_id).send(f"Kõik kasiinovõimelised said {amount} tokenit! (max 50k)")
 
 class Reactable:
     def __init__(self,
