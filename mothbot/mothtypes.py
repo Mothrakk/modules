@@ -106,6 +106,11 @@ class TokensAccount:
                 fptr.write(str(old + amount))
                 fptr.truncate()
 
+    def set(self, amount: int) -> None:
+        """Set the token count to the given amount."""
+        with open(self.path, "w") as fptr:
+            fptr.write(str(amount))
+
     def can_bet(self, amount: int) -> bool:
         """Returns a boolean on if the given `User` could bet `amount` tokens."""
         return self.amount >= amount
@@ -159,10 +164,11 @@ class UserCollection:
             amount = random.choice(UserCollection.TOKEN_SANTA_RANGE_TO_ADD)
             for user in self.users:
                 if hasattr(user, "tokens_account"):
-                    if user.tokens_account.amount + amount > UserCollection.TOKEN_SANTA_MAX:
-                        user.tokens_account.change(UserCollection.TOKEN_SANTA_MAX - user.tokens_account.amount)
-                    else:
-                        user.tokens_account.change(amount)
+                    if user.tokens_account.amount < UserCollection.TOKEN_SANTA_MAX:
+                        if user.tokens_account.amount + amount > UserCollection.TOKEN_SANTA_MAX:
+                            user.tokens_account.set(UserCollection.TOKEN_SANTA_MAX)
+                        else:
+                            user.tokens_account.change(amount)
             await client.get_channel(channel_id).send(f"Kõik kasiinovõimelised said {amount} tokenit! (max 50k)")
 
 class Reactable:
