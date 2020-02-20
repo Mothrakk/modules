@@ -33,10 +33,10 @@ class Session:
     async def start_session(self) -> None:
         self.player.tokens_account.change(-self.bet_amount)
         await self.table.send(f"{str(self.player)} on mängus - valikud on (stand | hit | status)")
-        await self.hit_dealer(False)
-        await self.hit_player(False)
-        await self.hit_dealer(False, hidden=True)
-        await self.hit_player()
+        await self.hit("Dealer", eval=False)
+        await self.hit("Player", eval=False)
+        await self.hit("Dealer", eval=False, hidden=True)
+        await self.hit("Player")
 
     async def end_session(self, ending: bool) -> None:
         if self.ongoing:
@@ -66,37 +66,30 @@ class Session:
         await self.unhide_cards()
         await self.evaluate_status()
         while self.ongoing:
-            await self.hit_dealer()
+            await self.hit("Dealer")
 
-    async def hit_player(self, eval: bool = True, _print: bool = True) -> None:
-        card = self.deck.draw()
-        self.player_hand.add(card)
-        if _print:
-            await self.table.send(f"{str(self.player)} tõmbas pakist {str(card)} ({self.player_hand.blackjack_value})")
-        if self.player_hand.blackjack_value > 21:
-            if (untapped_ace := self.player_hand.seek_untapped_ace()) is not None:
-                untapped_ace.blackjack_value = 1
-                if _print:
-                    await self.table.send(f"Õnneks oli pakis Ace kaart mis päästis käe ({self.player_hand.blackjack_value})")
-        if eval:
-            await self.evaluate_status()
-
-    async def hit_dealer(self, eval: bool = True, _print: bool = True, hidden: bool = False) -> None:
+    async def hit(self,
+                  hitting: Union["Dealer", "Player"],
+                  eval: bool = True,
+                  _print: bool = True,
+                  hidden: bool = False):
         card = self.deck.draw()
         card.hidden = hidden
-        self.dealer_hand.add(card)
+        deck_to_hit = self.dealer_hand if hitting == "Dealer" else self.player_hand
+        deck_to_hit.add(card)
+        name = "Diiler" if hitting == "Dealer" else str(self.player)
         if _print:
-            o = f"Diiler tõmbas pakist {str(card)}"
-            if self.dealer_hand.has_hidden_card:
+            o = f"{name} tõmbas pakist {str(card)}"
+            if deck_to_hit.has_hidden_card:
                 o += " (?)"
             else:
-                o += f" ({self.dealer_hand.blackjack_value})"
+                o += f" ({deck_to_hit.blackjack_value})"
             await self.table.send(o)
-        if self.dealer_hand.blackjack_value > 21:
-            if (untapped_ace := self.dealer_hand.seek_untapped_ace()) is not None:
+        if deck_to_hit.blackjack_value > 21:
+            if (untapped_ace := deck_to_hit.seek_untapped_ace()) is not None:
                 untapped_ace.blackjack_value = 1
                 if _print and not hidden:
-                    await self.table.send(f"Õnneks oli pakis Ace kaart mis päästis käe ({self.dealer_hand.blackjack_value})")
+                    await self.table.send(f"Õnneks oli pakis Ace kaart mis päästis käe ({deck_to_hit.blackjack_value})")
         if eval:
             await self.evaluate_status()
 
@@ -163,7 +156,7 @@ class BlackjackTable:
                 await sesh.player_stand()
 
             elif cmd == "hit":
-                await sesh.hit_player()
+                await sesh.hit("Player")
 
             elif cmd == "status":
                 await self.send(str(sesh))
@@ -186,4 +179,3 @@ class BlackjackTable:
     @property
     def channel(self) -> TextChannel:
         return self.client.get_channel(self.channel_id)
-

@@ -145,9 +145,9 @@ class MothBot:
                 await message.channel.send(f"Kantud üle {msg_spl[3]}")
             else:
                 await message.channel.send("Ei :)")
-        elif self.user_collection.has(message.author.id):
+        elif (user := self.user_collection.get(message.author.id)) is not None:
             await message.channel.send(
-                f"Sul on {self.user_collection.get(message.author.id).tokens_account.amount} tokenit"
+                f"Sul on {user.tokens_account.amount} tokenit"
             )
         else:
             await message.channel.send(f"{message.author.name} - sul pole tokenite rahakotti")
