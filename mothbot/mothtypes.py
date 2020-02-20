@@ -22,7 +22,7 @@ class User:
                  emojis: Union[Tuple[str], str, None] = None,
                  runescape: Union[RunescapeType, None] = None,
                  id: Union[int, None] = None,
-                 can_evaluate: bool = False,
+                 god_access: bool = False,
                  make_tokens_account: bool = True):
         """Constructor for creating an User object.
 
@@ -33,7 +33,7 @@ class User:
         `runescape`: A `RunescapeType` object if the given user is a Runescape player.
         Set to `None` if not a Runescape player.\n
         `id`: Discord ID for the given user. `None` if not necessary to specify.\n
-        `can_evaluate`: A boolean for determining if the given user can use the `eval` command. Only allow
+        `god_access`: A boolean for determining if the given user can use the god commands, like `eval`. Only allow
         trusted users to do this as it can cause havoc.\n
         `make_tokens_account`: Boolean for determining if the user should get a tokens wallet/tokens account.
         Note that in order for this to actually be taken account, an `id` needs to be provided.
@@ -41,7 +41,7 @@ class User:
         self.name = name
         self.emojis = emojis
         self.runescape = runescape
-        self.can_evaluate = can_evaluate
+        self.god_access = god_access
         self.id = id
         if make_tokens_account and id is not None:
             self.tokens_account = TokensAccount(self)
@@ -135,13 +135,13 @@ class UserCollection:
             RunescapeType.OSRS: list()
         }
         self.key_to_userobj = dict()
-        self.can_evaluate = set()
+        self.god_access = set()
         for user in self.users:
             self.key_to_userobj[user.name] = user
             if user.id is not None:
                 self.key_to_userobj[user.id] = user
-            if user.can_evaluate:
-                self.can_evaluate.add(user)
+            if user.god_access:
+                self.god_access.add(user)
             if isinstance(user.runescape, RunescapeType):
                 self.runescapers[user.runescape.type].append(user)
             
@@ -202,7 +202,7 @@ def build_userbase() -> Tuple[User]:
             "moth",
             runescape=RunescapeType("https://secure.runescape.com/m=hiscore_oldschool_ironman/hiscorepersonal?user1=extra%20nice"),
             id=127858900933279745,
-            can_evaluate=True
+            god_access=True
         ),
         User(
             "oll",

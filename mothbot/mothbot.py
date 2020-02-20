@@ -18,7 +18,7 @@ from runescape.lootsim.lootsim import LootSimManager
 from markov.markov_handler import MarkovHandler
 from mothtypes import UserCollection, Channel, Reactable
 from runescape.progression.progression import ProgressManager
-from casino.blackjack import BlackjackTable
+from casino.blackjack.blackjack import BlackjackTable
 from remindme.remindme import RemindMeManager
 
 my = PyBoiler.Boilerplate()
@@ -43,7 +43,10 @@ class MothBot:
     def __init__(self):
         self.user_collection = UserCollection(my.m_path("casino\\tokens"))
         PyBoiler.Log("Building casino").to_larva()
-        self.blackjack_table = BlackjackTable(client, Channel.Kasiino, self.user_collection)
+        self.blackjack_table = BlackjackTable(my.m_path("casino\\blackjack\\achievements"),
+                                              client,
+                                              Channel.Kasiino,
+                                              self.user_collection)
         PyBoiler.Log("Building Markov chains").to_larva()
         self.markov_handler = MarkovHandler(my.m_path("markov"), self.user_collection)
         PyBoiler.Log("Building lootsim handler").to_larva()
@@ -60,7 +63,6 @@ class MothBot:
             "lootsim":self.lootsim,
             "jututuba":self.chatroom_change_interval,
             "tokens":self.get_tokens,
-            "tokenshiscores":self.tokens_hiscore,
             "remindme":self.remindme_manager.new_tracker
         }
         for c in BlackjackTable.VALID_COMMANDS:
@@ -99,7 +101,7 @@ class MothBot:
         await message.channel.send("; ".join(self.cmds))
 
     async def evaluate(self, message):
-        if message.author.id in self.user_collection.can_evaluate:
+        if message.author.id in self.user_collection.god_access:
             r = eval(" ".join(message.content.split(" ")[1:]))
         else:
             r = "Ei :)"
@@ -133,7 +135,17 @@ class MothBot:
         await message.channel.send("jututuba x,y -- säti intervall sekundites, kus 2 <= y <= 600 ja 1 <= x < y") 
 
     async def get_tokens(self, message):
-        if self.user_collection.has(message.author.id):
+        msg_spl = message.content.split(" ")
+        if len(msg_spl) >= 2 and msg_spl[1] == "top":
+            await self.tokens_hiscore(message)
+        elif len(msg_spl) >= 4 and msg_spl[1] == "gift":
+            if message.author.id in self.user_collection.god_access:
+                user_to_gift = self.user_collection.get(int(msg_spl[2]))
+                user_to_gift.tokens_account.change(int(msg_spl[3]))
+                await message.channel.send(f"Kantud üle {msg_spl[3]}")
+            else:
+                await message.channel.send("Ei :)")
+        elif self.user_collection.has(message.author.id):
             await message.channel.send(
                 f"Sul on {self.user_collection.get(message.author.id).tokens_account.amount} tokenit"
             )
