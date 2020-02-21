@@ -3,6 +3,7 @@ import os
 
 from mothtypes import User, UserCollection
 from casino.cards import Deck, Card
+from casino.table import Table
 
 from discord import Client, Message, TextChannel
 from typing import List, Union
@@ -104,7 +105,7 @@ class Session:
         elif player_hand_val > 21 or (self.player_standing and dealer_hand_val > player_hand_val):
             await self.end_session(Session.DEALER_WINS)
 
-class BlackjackTable:
+class BlackjackTable(Table):
     VALID_COMMANDS = {"blackjack", "stand", "hit", "status", "bjrecords"}
 
     def __init__(self, path_to_achievements: str, client: Client, channel_id: int, user_collection: UserCollection):
@@ -172,10 +173,3 @@ class BlackjackTable:
             with open(filename, "w") as fptr:
                 fptr.write(f"{amount}:{str(user)}")
             await self.send(f"{str(user)} - õnnitlen, oled uus rekordihoidja kategoorias '{achievement}'")
-
-    async def send(self, msg: str) -> None:
-        await self.channel.send(msg)
-
-    @property
-    def channel(self) -> TextChannel:
-        return self.client.get_channel(self.channel_id)
