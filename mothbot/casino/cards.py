@@ -3,6 +3,21 @@ import itertools
 
 from typing import List, Union, Tuple, Dict, Set
 
+class PokerMethods:
+    @staticmethod
+    def straight_has_flush(rank_to_suits: Dict[int, Set[int]], largest: int) -> bool:
+        suits_intersection = rank_to_suits[largest]
+        for rank in range(largest - 1, largest - 5, -1):
+            suits_intersection.intersection_update(rank_to_suits[rank])
+        return bool(suits_intersection)
+
+    @staticmethod
+    def straight_array_to_str(largest: int) -> str:
+        s = list()
+        for rank in range(largest - 4, largest + 1):
+            s.append(Card.rank_tier_to_str(rank))
+        return "-".join(s)
+
 class Deck:
     """Create a Deck object.
 
@@ -142,20 +157,6 @@ class Hand:
     def sort_by_ranking(self) -> None:
         """Sort the hand in place by rank."""
         self.cards = sorted(self.cards, key=lambda card: card.rank_tier)
-
-    @staticmethod
-    def straight_has_flush(rank_to_suits: Dict[int, Set[int]], largest: int) -> bool:
-        suits_intersection = rank_to_suits[largest]
-        for rank in range(largest - 1, largest - 5, -1):
-            suits_intersection.intersection_update(rank_to_suits[rank])
-        return bool(suits_intersection)
-
-    @staticmethod
-    def straight_array_to_str(largest: int) -> str:
-        s = list()
-        for rank in range(largest - 4, largest + 1):
-            s.append(Card.rank_tier_to_str(rank))
-        return "-".join(s)
         
     def poker_value(self, community_cards: List[Card] = []) -> Tuple[int, str]:
         """Returns the poker value of the hand in the form of (strength, str)"""
@@ -174,13 +175,13 @@ class Hand:
                 straights.add(largest)
 
         # ROYAL FLUSH
-        if 14 in straights and Hand.straight_has_flush(rank_to_suits, 14):
+        if 14 in straights and PokerMethods.straight_has_flush(rank_to_suits, 14):
             return 100000, "Royal Flush!"
 
         # STRAIGHT FLUSH
         for largest in sorted(straights.difference({14}), reverse=True):
-            if Hand.straight_has_flush(rank_to_suits, largest):
-                return 90000 + largest, f"Straight Flush ({Hand.straight_array_to_str(largest)})"
+            if PokerMethods.straight_has_flush(rank_to_suits, largest):
+                return 90000 + largest, f"Straight Flush ({PokerMethods.straight_array_to_str(largest)})"
 
         pairs = {i: set() for i in range(2, 5)}
         for rank, suits in rank_to_suits.items():
@@ -215,7 +216,7 @@ class Hand:
         # STRAIGHT
         if straights:
             highest_card_of_largest_straight = max(straights)
-            return 50000 + highest_card_of_largest_straight, f"Straight ({Hand.straight_array_to_str(highest_card_of_largest_straight)})"
+            return 50000 + highest_card_of_largest_straight, f"Straight ({PokerMethods.straight_array_to_str(highest_card_of_largest_straight)})"
 
         # THREE OF A KIND
         if pairs[3]:
