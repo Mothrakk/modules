@@ -109,9 +109,8 @@ class BlackjackTable(Table):
     VALID_COMMANDS = {"blackjack", "stand", "hit", "status", "bjrecords"}
 
     def __init__(self, path_to_achievements: str, client: Client, channel_id: int, user_collection: UserCollection):
+        super().__init__(client, channel_id)
         self.path_to_achievements = path_to_achievements
-        self.client = client
-        self.channel_id = channel_id
         self.user_collection = user_collection
         self.sessions = dict()
 

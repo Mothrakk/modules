@@ -3,7 +3,7 @@ import re
 import os
 import asyncio
 
-from discord import Client
+from discord import Client, User as DiscordUser
 from runescape.rstypes import RunescapeType
 from typing import Union, Tuple, List
 
@@ -17,8 +17,11 @@ class Channel:
     Hacks = 445775276727861258
     
 class User:
+    DISCORD_CLIENT: Client = None # Assigned to in the init of UserCollection
+
     def __init__(self,
                  name: str,
+                 *,
                  emojis: Union[Tuple[str], str, None] = None,
                  runescape: Union[RunescapeType, None] = None,
                  id: Union[int, None] = None,
@@ -57,6 +60,16 @@ class User:
         if type(other) is int:
             return self.id == other
         return self.id == other.id
+
+    async def dm(self, msg: str) -> None:
+        """Send a direct message with the contents `msg` to this user."""
+        discord_user = self.DISCORD_CLIENT.get_user(self.id)
+        await discord_user.send(msg)
+
+    @property
+    def mentionable(self) -> str:
+        """Returns the string to @ping this user."""
+        return f"<@!{self.id}>"
     
     @property
     def emoji(self) -> Union[str, None]:
@@ -83,7 +96,7 @@ class User:
         return pref
 
 class TokensAccount:
-    PATH_TO_TOKENS = "" # Assigned to in the init of UserCollection
+    PATH_TO_TOKENS: str = None # Assigned to in the init of UserCollection
     DEFAULT_TOKENS_COUNT = "3000"
     
     def __init__(self, user: User):
@@ -126,8 +139,10 @@ class UserCollection:
     TOKEN_SANTA_RANGE_TO_ADD = range(1000, 2000)
     TOKEN_SANTA_MAX = 50_000
 
-    def __init__(self, path_to_casino_tokens: str):
+    def __init__(self, path_to_casino_tokens: str, client: Client):
         TokensAccount.PATH_TO_TOKENS = path_to_casino_tokens
+        User.DISCORD_CLIENT = client
+
         os.makedirs(path_to_casino_tokens, exist_ok=True)
         self.users = build_userbase()
         self.runescapers = {
@@ -136,6 +151,7 @@ class UserCollection:
         }
         self.key_to_userobj = dict()
         self.god_access = set()
+
         for user in self.users:
             self.key_to_userobj[user.name] = user
             if user.id is not None:
@@ -144,13 +160,20 @@ class UserCollection:
                 self.god_access.add(user)
             if isinstance(user.runescape, RunescapeType):
                 self.runescapers[user.runescape.type].append(user)
+
+    def __iter__(self):
+        return iter(self.users)
             
-    def get(self, key: Union[str, int]) -> User:
+    def get(self, key: Union[str, int, DiscordUser]) -> User:
         """Returns `User` object based on given `key`.
         
         `key` should be the user's name or ID. If no such `key` exists, returns `None`.
         """
-        if self.has(key):
+        if hasattr(key, "id") or hasattr(key, "name"):
+            for attribute in (key.id, key.name):
+                if self.has(attribute):
+                    return self.key_to_userobj[attribute]
+        elif self.has(key):
             return self.key_to_userobj[key]
 
     def has(self, key: Union[str, int]) -> bool:

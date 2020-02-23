@@ -9,11 +9,6 @@ class Table:
     async def send(self, msg: str) -> None:
         await self.channel.send(msg)
 
-    async def send_dm(self, user: User, msg: str) -> None:
-        user = self.client.get_user(user.id)
-        await user.send(msg)
-
     @property
     def channel(self) -> TextChannel:
         return self.client.get_channel(self.channel_id)
-
