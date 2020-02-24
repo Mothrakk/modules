@@ -1,8 +1,8 @@
 from mothtypes import User, UserCollection
-from casino.cards import Hand, Deck
+from casino.cards import Hand, Deck, Card
 
 from discord import User as DiscordUser
-from typing import List, Dict, Union
+from typing import List, Dict, Union, Set
 
 class PokerPlayer(User):
     def __init__(self, user: User):
@@ -18,6 +18,36 @@ class PokerPlayer(User):
 
     async def dm_hand(self) -> None:
         await self.dm(str(self.hand))
+
+    def contribute(self, amount: int) -> None:
+        assert self.chips >= amount
+        self.contributions += amount
+        self.chips -= amount
+
+    def options(self, contributors: Set[PokerPlayer]) -> Dict[str, Union[int, range, None]]:
+        options = {"fold": None, "allin": self.chips}
+        largest_contribution = max((p.contributions for p in contributors))
+        if self.contributions == largest_contribution:
+            options["check"] = None
+            options["bet"] = range(1, self.chips + 1)
+        elif self.contributions < largest_contribution:
+            debt = largest_contribution - self.contributions
+            if self.chips >= debt:
+                options["call"] = debt
+                if self.chips > debt:
+                    options["raise"] = range(debt, self.chips + 1)
+        return options
+
+    def options_string(self, contributors: Set[PokerPlayer]) -> str:
+        out = list()
+        for option, v in self.options(contributors).items():
+            if v is None:
+                out.append(option)
+            elif type(v) is int:
+                out.append(f"{option} ({v})")
+            else: # range
+                out.append(f"{option} ({v.start}-{v.stop - 1})")
+        return ", ".join(out)
     
 class PokerPlayerCollection:
     def __init__(self, poker_players: List[PokerPlayer] = []):
@@ -47,9 +77,17 @@ class PokerPlayerCollection:
         for player in self.poker_players:
             player.tokens_account.change(-amount)
 
+    def set_chips(self, amount: int) -> None:
+        for player in self.poker_players:
+            player.chips = amount
+
     def deal_hands(self, deck: Deck) -> None:
         for player in self.poker_players:
-            player.hand = [deck.draw(), deck.draw()]
+            player.hand = Hand([deck.draw(), deck.draw()])
+
+    def reset_contributions(self) -> None:
+        for player in self.poker_players:
+            player.contributions = 0
     
     async def dm_hands(self) -> None:
         for player in self.poker_players:
