@@ -50,6 +50,13 @@ class PokerSession:
         await self.send_current_player()
 
     async def end_round(self) -> None:
+        to_eliminate = list()
+        for p in self.poker_players:
+            if not p.chips:
+                to_eliminate.append(p)
+                await self.table.send(f"{p.mentionable} langes välja")
+        for p in to_eliminate:
+            self.poker_players.remove(p)
         if len(self.poker_players) > 1:
             self.button_idx = (self.button_idx + 1) % len(self.poker_players)
             if not self.button_idx:
@@ -81,16 +88,59 @@ class PokerSession:
         await self.draw_community_cards(n)
         showdown_players = self.contributors.difference(self.folded)
         await self.reveal_cards(showdown_players)
+        total_pot = self.pot
         pot_counter = 0
-        while (smallest_contribution := min((p.contributions for p in showdown_players))) < (largest_contribution := max((p.contributions for p in showdown_players))):
-            pass
-        raise NotImplementedError
+
+        while len(showdown_players):
+            smallest_contribution = min((p.contributions for p in showdown_players))
+            largest_contribution = max((p.contributions for p in showdown_players))
+            if smallest_contribution == largest_contribution:
+                # winner of this takes the rest of the pot
+                pot_size = total_pot
+            else:
+                pot_size = smallest_contribution * len(showdown_players)
+            for p in showdown_players:
+                p.contributions -= smallest_contribution
+
+            player_to_cls = dict()
+            player_to_val = dict()
+            strongest_hand = 0
+            for p in showdown_players:
+                val, cl = p.hand.poker_value
+                player_to_cls[p] = cl
+                player_to_val[p] = val
+                if val > strongest_hand:
+                    strongest_hand = val
+            winners = [p for p in showdown_players if player_to_val[p] == strongest_hand]
+            win_amount = pot_size // len(winners)
+            for w in winners:
+                w.chips += win_amount
+            if not pot_counter:
+                out = [f"Main pot ({pot_size}) võitis:"]
+            else:
+                out = [f"Side pot {pot_counter} ({pot_size}) võitis:"]
+            for w in winners:
+                out.append(f"{w.mentionable} ({win_amount}): {player_to_cls[w]}")
+            
+            await self.table.send("\n".join(out))
+            pot_counter += 1
+            total_pot -= pot_size
+            for p in [p for p in showdown_players if p.contributions == 0]:
+                showdown_players.remove(p)
+        await self.end_round()
 
     async def progress(self) -> None:
         if len(self.needs_to_act):
             await self.send_current_player()
         else:
-            raise NotImplementedError
+            if len(self.community_cards) == 5:
+                await self.showdown()
+            elif len(self.community_cards) in (3, 4):
+                await self.draw_community_cards(1)
+            else:
+                await self.draw_community_cards(3)
+            self.needs_to_act = set(self.poker_players).difference(self.folded).difference(self.all_in)
+            await self.progress()
 
     async def handle_input(self, msg_spl: List[str]):
         cmd = msg_spl[0]
