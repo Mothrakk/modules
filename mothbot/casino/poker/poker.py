@@ -84,6 +84,7 @@ class PokerSession:
         await self.table.send("\n".join(out))
 
     async def showdown(self) -> None:
+        assert self.table.session is not None
         n = 5 - len(self.community_cards)
         await self.draw_community_cards(n)
         showdown_players = self.contributors.difference(self.folded)
@@ -106,7 +107,7 @@ class PokerSession:
             player_to_val = dict()
             strongest_hand = 0
             for p in showdown_players:
-                val, cl = p.hand.poker_value
+                val, cl = p.hand.poker_value(self.community_cards)
                 player_to_cls[p] = cl
                 player_to_val[p] = val
                 if val > strongest_hand:
@@ -116,11 +117,11 @@ class PokerSession:
             for w in winners:
                 w.chips += win_amount
             if not pot_counter:
-                out = [f"Main pot ({pot_size}) võitis:"]
+                out = [f"Main pot ({pot_size} :small_orange_diamond:) võitis:"]
             else:
-                out = [f"Side pot {pot_counter} ({pot_size}) võitis:"]
+                out = [f"Side pot {pot_counter} ({pot_size} :small_orange_diamond:) võitis:"]
             for w in winners:
-                out.append(f"{w.mentionable} ({win_amount}): {player_to_cls[w]}")
+                out.append(f"{w.mentionable} ({win_amount} :small_orange_diamond:): {player_to_cls[w]}")
             
             await self.table.send("\n".join(out))
             pot_counter += 1
@@ -130,30 +131,33 @@ class PokerSession:
         await self.end_round()
 
     async def progress(self) -> None:
-        if len(self.needs_to_act):
+        future_actors = set(self.poker_players).difference(self.folded).difference(self.all_in)
+        if (not len(future_actors) and len(self.all_in) == 1) or (len(future_actors) == 1 and not len(self.all_in)):
+            yoinker = self.all_in.pop() if len(self.all_in) else future_actors.pop()
+            await self.table.send(f"{yoinker.mentionable} varastas poti! ({self.pot} :small_orange_diamond:)")
+            yoinker.chips += self.pot
+            await self.end_round()
+        elif len(self.needs_to_act):
             await self.send_current_player()
+        elif len(future_actors) == 1 or len(self.community_cards) == 5 or (not len(future_actors) and len(self.all_in)):
+            await self.showdown()
         else:
-            if len(self.community_cards) == 5:
-                await self.showdown()
-            elif len(self.community_cards) in (3, 4):
+            self.needs_to_act = future_actors
+            if len(self.community_cards) in (3, 4):
                 await self.draw_community_cards(1)
             else:
                 await self.draw_community_cards(3)
-            self.needs_to_act = set(self.poker_players).difference(self.folded).difference(self.all_in)
-            if len(self.needs_to_act) == 1:
-                await self.showdown()
-            else:
-                await self.progress()
+            await self.send_current_player()
 
     async def handle_input(self, msg_spl: List[str]):
         cmd = msg_spl[0]
         current = self.current_player
-        options = current.options
+        options = current.options(self.contributors)
 
         assert current in self.needs_to_act
 
         if (cmd not in options) or (type(options[cmd]) is range and not (len(msg_spl) > 1 and msg_spl[1].isnumeric() and (arg := int(msg_spl[1])) in options[cmd])):
-            await self.table.send(f"{current.mentionable} halb valik - sinu valikud on {current.options_string}")
+            await self.table.send(f"{current.mentionable} halb valik - sinu valikud on {current.options_string(self.contributors)}")
             return
 
         if cmd == "fold":
@@ -212,7 +216,7 @@ class PokerSession:
         return sum((p.contributions for p in self.contributors))
 
 class PokerTable(Table):
-    VALID_COMMANDS = {"poker", "chips"}.union(PokerSession.VALID_COMMANDS)
+    VALID_COMMANDS = {"poker", "chips", "pot"}.union(PokerSession.VALID_COMMANDS)
     MIN_BUY_IN = 2000
     GENERIC_ERR = f"poker (buyin) (@mängija1) (@mängija2) ...\nBuy-in miinimum {MIN_BUY_IN} ja peab jaguma 1000-ga"
 
@@ -235,18 +239,21 @@ class PokerTable(Table):
 
         poker_player = PokerPlayer(user)
 
-        msg_spl = [x.strip() for x in message.strip().split(" ") if x]
+        msg_spl = [x.strip() for x in message.content.strip().split(" ") if x]
         cmd = msg_spl[0].lower()
         assert cmd in PokerTable.VALID_COMMANDS
 
-        if self.session is not None and cmd in PokerTable.VALID_COMMANDS:
+        if self.session is not None and cmd in PokerSession.VALID_COMMANDS:
             if poker_player == self.session.current_player:
                 await self.session.handle_input(msg_spl)
             else:
                 await self.session.send_current_player()
 
         elif cmd == "chips" and self.session is not None and poker_player in self.session.poker_players:
-            await self.send(f"{poker_player.mentionable} {poker_player.chips} :small_orange_diamond:")
+            await self.send(f"{poker_player.mentionable} {self.session.poker_players.get(poker_player).chips} :small_orange_diamond:")
+
+        elif cmd == "pot" and self.session is not None:
+            await self.send(f"Praegune pot: {self.session.pot} :small_orange_diamond:")
 
         elif cmd == "poker":
             if self.session is not None:

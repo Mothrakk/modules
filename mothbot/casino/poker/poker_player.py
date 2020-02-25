@@ -24,7 +24,7 @@ class PokerPlayer(User):
         self.contributions += amount
         self.chips -= amount
 
-    def options(self, contributors: Set[PokerPlayer]) -> Dict[str, Union[int, range, None]]:
+    def options(self, contributors: Set["PokerPlayer"]) -> Dict[str, Union[int, range, None]]:
         options = {"fold": None, "allin": self.chips}
         largest_contribution = max((p.contributions for p in contributors))
         if self.contributions == largest_contribution:
@@ -35,18 +35,18 @@ class PokerPlayer(User):
             if self.chips >= debt:
                 options["call"] = debt
                 if self.chips > debt:
-                    options["raise"] = range(debt, self.chips + 1)
+                    options["raise"] = range(debt + 1, self.chips + 1)
         return options
 
-    def options_string(self, contributors: Set[PokerPlayer]) -> str:
+    def options_string(self, contributors: Set["PokerPlayer"]) -> str:
         out = list()
         for option, v in self.options(contributors).items():
             if v is None:
                 out.append(option)
             elif type(v) is int:
-                out.append(f"{option} ({v})")
+                out.append(f"{option} ({v} :small_orange_diamond:)")
             else: # range
-                out.append(f"{option} ({v.start}-{v.stop - 1})")
+                out.append(f"{option} ({v.start}-{v.stop - 1} :small_orange_diamond:)")
         return ", ".join(out)
     
 class PokerPlayerCollection:
@@ -56,8 +56,22 @@ class PokerPlayerCollection:
     def __iter__(self):
         return iter(self.poker_players)
 
+    def __len__(self) -> int:
+        return len(self.poker_players)
+
+    def __getitem__(self, i: int) -> PokerPlayer:
+        return self.poker_players[i]
+
     def add_player(self, player: PokerPlayer):
         self.poker_players.append(player)
+
+    def remove(self, player: PokerPlayer) -> None:
+        self.poker_players.remove(player)
+
+    def get(self, player: PokerPlayer) -> PokerPlayer:
+        for p in self.poker_players:
+            if player.id == p.id:
+                return p
 
     @staticmethod
     def convert(discord_users: List[DiscordUser], user_collection: UserCollection, buy_in: int) -> Union["PokerPlayerCollection", str]:

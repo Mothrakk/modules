@@ -19,6 +19,7 @@ from markov.markov_handler import MarkovHandler
 from mothtypes import UserCollection, Channel, Reactable
 from runescape.progression.progression import ProgressManager
 from casino.blackjack.blackjack import BlackjackTable
+from casino.poker.poker import PokerTable
 from remindme.remindme import RemindMeManager
 
 my = PyBoiler.Boilerplate()
@@ -43,6 +44,7 @@ class MothBot:
     def __init__(self):
         self.user_collection = UserCollection(my.m_path("casino\\tokens"), client)
         PyBoiler.Log("Building casino").to_larva()
+        self.poker_table = PokerTable(client, Channel.Kasiino, self.user_collection)
         self.blackjack_table = BlackjackTable(my.m_path("casino\\blackjack\\achievements"),
                                               client,
                                               Channel.Kasiino,
@@ -67,6 +69,8 @@ class MothBot:
         }
         for c in BlackjackTable.VALID_COMMANDS:
             self.cmds[c] = self.blackjack_table.handle_input
+        for c in PokerTable.VALID_COMMANDS:
+            self.cmds[c] = self.poker_table.handle_input
             
         self.testing = False
         self.logging = False
