@@ -60,8 +60,37 @@ class PokerSession:
         else:
             await self.end_session()
 
-    async def progress(self) -> None:
+    async def draw_community_cards(self, n: int) -> None:
+        if n:
+            for i in range(n):
+                self.community_cards.append(self.deck.draw())
+            out = ["Ühiskaardid:"]
+            for i, card in enumerate(self.community_cards, 1):
+                out.append(f"{i}: {str(card)}")
+            await self.table.send("\n".join(out))
+
+    async def reveal_cards(self, players: Set[PokerPlayer]) -> None:
+        out = list()
+        for player in players:
+            out.append(f"{str(player)} kaardid:")
+            out.append(str(player.hand))
+        await self.table.send("\n".join(out))
+
+    async def showdown(self) -> None:
+        n = 5 - len(self.community_cards)
+        await self.draw_community_cards(n)
+        showdown_players = self.contributors.difference(self.folded)
+        await self.reveal_cards(showdown_players)
+        pot_counter = 0
+        while (smallest_contribution := min((p.contributions for p in showdown_players))) < (largest_contribution := max((p.contributions for p in showdown_players))):
+            pass
         raise NotImplementedError
+
+    async def progress(self) -> None:
+        if len(self.needs_to_act):
+            await self.send_current_player()
+        else:
+            raise NotImplementedError
 
     async def handle_input(self, msg_spl: List[str]):
         cmd = msg_spl[0]
@@ -79,15 +108,17 @@ class PokerSession:
         elif cmd == "check":
             pass
         else:
+            largest_contribution = max((p.contributions for p in self.contributors))
             self.contributors.add(current)
             amount = arg if type(options[cmd]) is range else options[cmd]
             current.contribute(amount)
-            self.needs_to_act = set(self.poker_players).difference(self.folded).difference(self.all_in)
+            if max((p.contributions for p in self.contributors)) > largest_contribution:
+                self.needs_to_act = set(self.poker_players).difference(self.folded).difference(self.all_in)
             if not current.chips:
                 self.all_in.add(current)
             await self.table.send(f"{str(current)}: {cmd} {amount} :small_orange_diamond:")
+        
         self.needs_to_act.remove(current)
-
         await self.progress()
 
     async def deduct_blinds(self) -> None:
@@ -125,7 +156,7 @@ class PokerSession:
 
     @property
     def pot(self) -> int:
-        return sum((p.contributions for p in self.poker_players))
+        return sum((p.contributions for p in self.contributors))
 
 class PokerTable(Table):
     VALID_COMMANDS = {"poker", "chips"}.union(PokerSession.VALID_COMMANDS)
