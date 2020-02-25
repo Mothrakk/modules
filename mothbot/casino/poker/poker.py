@@ -140,7 +140,10 @@ class PokerSession:
             else:
                 await self.draw_community_cards(3)
             self.needs_to_act = set(self.poker_players).difference(self.folded).difference(self.all_in)
-            await self.progress()
+            if len(self.needs_to_act) == 1:
+                await self.showdown()
+            else:
+                await self.progress()
 
     async def handle_input(self, msg_spl: List[str]):
         cmd = msg_spl[0]
