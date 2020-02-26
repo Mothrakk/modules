@@ -10,6 +10,7 @@ class RemindMeManager:
     def __init__(self, client: Client, path_to_tracking: str):
         self.client = client
         self.path_to_tracking = path_to_tracking
+        os.makedirs(self.path_to_tracking, exist_ok=True)
 
     async def new_tracker(self, message: Message):
         msg_spl = [x.strip() for x in message.content.split(" ") if x]

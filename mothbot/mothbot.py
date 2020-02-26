@@ -3,6 +3,7 @@
 from sys import argv, path
 path.append("\\".join(argv[0].split("\\")[:-2]))
 
+import time
 import discord
 import requests
 import asyncio
@@ -42,7 +43,15 @@ reactables = [
 
 class MothBot:
     def __init__(self):
+        self.logging = False
         self.user_collection = UserCollection(my.m_path("casino\\tokens"), client)
+
+        self.build_managers()
+        self.hook_background_tasks()
+        self.hook_commands()
+
+    def build_managers(self):
+        start_time = time.time()
         PyBoiler.Log("Building casino").to_larva()
         self.poker_table = PokerTable(client, Channel.Kasiino, self.user_collection)
         self.blackjack_table = BlackjackTable(my.m_path("casino\\blackjack\\achievements"),
@@ -58,6 +67,20 @@ class MothBot:
                                                 my.m_path("runescape\\data\\osrs"),
                                                 my.m_path("runescape\\data\\rs3"))
         self.remindme_manager = RemindMeManager(client, my.m_path("remindme\\tracking"))
+        PyBoiler.Log(f"Took {round(time.time() - start_time, 2)}s").to_larva()
+
+    def hook_background_tasks(self):
+        tasks = (
+                (self.progress_manager.loop,             (client, Channel.Grupiteraapia)),
+                (self.markov_handler.chatroom_loop,      (client, Channel.Jututuba)),
+                (self.user_collection.token_incrementer, (client, Channel.Kasiino)),
+                (self.remindme_manager.loop,              tuple())
+        )
+        for method, args in tasks:
+            client.loop.create_task(method(*args))
+        PyBoiler.Log(f"Hooked {len(tasks)} background tasks").to_larva()
+
+    def hook_commands(self):
         self.cmds = {
             "mothbot":self.help,
             "eval":self.evaluate,
@@ -67,14 +90,11 @@ class MothBot:
             "tokens":self.get_tokens,
             "remindme":self.remindme_manager.new_tracker
         }
-        for c in BlackjackTable.VALID_COMMANDS:
-            self.cmds[c] = self.blackjack_table.handle_input
-        for c in PokerTable.VALID_COMMANDS:
-            self.cmds[c] = self.poker_table.handle_input
-            
-        self.testing = False
-        self.logging = False
-    
+        for cmd_collection, method in zip(
+            (BlackjackTable.VALID_COMMANDS, PokerTable.VALID_COMMANDS),
+            (self.blackjack_table.handle_input, self.poker_table.handle_input)):
+            self.cmds.update(dict.fromkeys(cmd_collection, method))
+
     async def handle_message(self, message) -> None:
         first_word = message.content.split(" ")[0].lower()
 
@@ -175,9 +195,6 @@ async def on_ready():
 
 @client.event
 async def on_message(message):
-    if mothbot.testing and (user := mothbot.user_collection.get(message.author)) is not None:
-        if user.name == "moth":
-            await user.dm("hello")
     if message.channel.id == Channel.Send_To_Grupiteraapia:
         await client.get_channel(Channel.Grupiteraapia).send(message.content)
     elif message.author.id != client.user.id:
@@ -187,10 +204,6 @@ with open(my.m_path("token.txt"), "r") as fptr:
     token = fptr.read().strip()
 
 try:
-    client.loop.create_task(mothbot.progress_manager.loop(client, Channel.Grupiteraapia))
-    client.loop.create_task(mothbot.markov_handler.chatroom_loop(client, Channel.Jututuba))
-    client.loop.create_task(mothbot.user_collection.token_incrementer(client, Channel.Kasiino))
-    client.loop.create_task(mothbot.remindme_manager.loop())
     client.run(token)
 except discord.errors.LoginFailure:
     print("Connection to the Discord API was disrupted. Bad token?")
