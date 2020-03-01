@@ -150,7 +150,7 @@ class PokerSession:
             await self.send_current_player()
 
     async def handle_input(self, msg_spl: List[str]):
-        cmd = msg_spl[0]
+        cmd = msg_spl[0].lower()
         current = self.current_player
         options = current.options(self.contributors)
 

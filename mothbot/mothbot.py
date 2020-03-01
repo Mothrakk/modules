@@ -88,7 +88,8 @@ class MothBot:
             "lootsim":self.lootsim,
             "jututuba":self.chatroom_change_interval,
             "tokens":self.get_tokens,
-            "remindme":self.remindme_manager.new_tracker
+            "remindme":self.remindme_manager.new_tracker,
+            "dab":self.dab
         }
         for cmd_collection, method in zip(
             (BlackjackTable.VALID_COMMANDS, PokerTable.VALID_COMMANDS),
@@ -186,6 +187,22 @@ class MothBot:
         for name in sorted(data, key=lambda name: data[name], reverse=True):
             out.append(f"{name} - {data[name]}")
         await message.channel.send("\n".join(out))
+
+    async def dab(self, message):
+        dance = list()
+        p = my.m_path("fortdance")
+        for filename in sorted(os.listdir(p)):
+            with open(f"{p}\\{filename}", "r", encoding="utf-8") as fptr:
+                dance.append(fptr.read())
+        count = 0
+        i = 1
+        msg = await message.channel.send(f"```{dance[0]}```")
+        while count < 2:
+            await msg.edit(content=f"```{dance[i]}```")
+            i = (i + 1) % len(dance)
+            if not i:
+                count += 1
+            await asyncio.sleep(0.5)
 
 mothbot = MothBot()
 
