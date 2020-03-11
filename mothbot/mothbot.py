@@ -74,7 +74,8 @@ class MothBot:
                 (self.progress_manager.loop,             (client, Channel.Grupiteraapia)),
                 (self.markov_handler.chatroom_loop,      (client, Channel.Jututuba)),
                 (self.user_collection.token_incrementer, (client, Channel.Kasiino)),
-                (self.remindme_manager.loop,              tuple())
+                (self.remindme_manager.loop,              tuple()),
+                (self.corona_updater,                     tuple())
         )
         for method, args in tasks:
             client.loop.create_task(method(*args))
@@ -89,7 +90,8 @@ class MothBot:
             "jututuba":self.chatroom_change_interval,
             "tokens":self.get_tokens,
             "remindme":self.remindme_manager.new_tracker,
-            "dab":self.dab
+            "dab":self.dab,
+            "corona":self.corona
         }
         for cmd_collection, method in zip(
             (BlackjackTable.VALID_COMMANDS, PokerTable.VALID_COMMANDS),
@@ -204,11 +206,41 @@ class MothBot:
                 count += 1
             await asyncio.sleep(0.5)
 
+    async def corona_updater(self):
+        await client.wait_until_ready()
+        while not client.is_closed():
+            response = requests.get(r"https://services1.arcgis.com/0MSEUqKaxRlEPj5g/arcgis/rest/services/ncov_cases/FeatureServer/1/query?f=json&where=(Confirmed%20%3E%200)&returnGeometry=false&outFields=*&orderByFields=Recovered%20desc&resultOffset=0&resultRecordCount=500&cacheHint=true")
+            if response.status_code == 200:
+                with open(my.m_path("corona\\world.json"), "wb") as fptr:
+                    fptr.write(response.content)
+            response = requests.get(r"https://www.terviseamet.ee/et/uuskoroonaviirus")
+            p = r"koroonaviirusesse nakatunud (\d+)"
+            if response.status_code == 200:
+                with open(my.m_path("corona\\eesti.txt"), "w") as fptr:
+                    fptr.write(re.findall(p, response.text)[0])
+            await asyncio.sleep(120)
+    
+    async def corona(self, message):
+        with open(my.m_path("corona\\world.json"), "r") as fptr:
+            parsed = json.load(fptr)
+        total_infected = total_dead = 0
+        for feature in parsed["features"]:
+            attrs = feature["attributes"]
+            total_infected += attrs["Confirmed"]
+            total_dead += attrs["Deaths"]
+        with open(my.m_path("corona\\eesti.txt"), "r") as fptr:
+            estonia_infected = fptr.read()
+        msg = [":biohazard: Koroona seis"]
+        for prefix, val in zip(("Kokku nakatanuid", "Kokku surnuid", "Eestis nakatanuid"), (total_infected, total_dead, estonia_infected)):
+            msg.append(f"{prefix} <:monkas:418538700260114433> :point_right: {val}")
+        await message.channel.send("\n".join(msg))
+
 mothbot = MothBot()
 
 @client.event
 async def on_ready():
     PyBoiler.Log("online").to_larva()
+    await client.change_presence(activity=discord.Activity(type=discord.ActivityType.watching, name="your every move"))
 
 @client.event
 async def on_message(message):
