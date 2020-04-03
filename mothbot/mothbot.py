@@ -10,6 +10,7 @@ import asyncio
 import json
 import re
 import random
+import bs4
 import os
 import traceback
 import math
@@ -25,7 +26,7 @@ from remindme.remindme import RemindMeManager
 
 my = PyBoiler.Boilerplate()
 
-if not os.path.exists(my.m_path("token.txt")):
+if not os.path.exists(my.m_path("SECRET\\token.txt")):
     print("Missing token. Place token into the 'token.txt' file.")
     exit(-1)
 
@@ -43,12 +44,18 @@ reactables = [
 
 class MothBot:
     def __init__(self):
-        self.logging = False
         self.user_collection = UserCollection(my.m_path("casino\\tokens"), client)
 
         self.build_managers()
         self.hook_background_tasks()
         self.hook_commands()
+        
+        p = my.m_path("SECRET")
+        self.secrets = dict()
+        for filename in os.listdir(p):
+            with open(f"{p}\\{filename}", "r") as fptr:
+                key = filename.split(".")[0]
+                self.secrets[key] = fptr.read()
 
     def build_managers(self):
         start_time = time.time()
@@ -75,7 +82,8 @@ class MothBot:
                 (self.markov_handler.chatroom_loop,      (client, Channel.Jututuba)),
                 (self.user_collection.token_incrementer, (client, Channel.Kasiino)),
                 (self.remindme_manager.loop,              tuple()),
-                (self.corona_updater,                     tuple())
+                (self.corona_updater,                     tuple()),
+                (self.maku_live_checker,                  tuple())
         )
         for method, args in tasks:
             client.loop.create_task(method(*args))
@@ -91,7 +99,8 @@ class MothBot:
             "tokens":self.get_tokens,
             "remindme":self.remindme_manager.new_tracker,
             "dab":self.dab,
-            "corona":self.corona
+            "corona":self.corona,
+            "wiki":self.wiki
         }
         for cmd_collection, method in zip(
             (BlackjackTable.VALID_COMMANDS, PokerTable.VALID_COMMANDS),
@@ -121,9 +130,6 @@ class MothBot:
         except:
             error_msg = f"```\n{traceback.format_exc()}\n```"
             await message.channel.send(error_msg)
-
-        if self.logging:
-            PyBoiler.Log(f"{message.author.name}: {message.content}").to_larva()
 
     async def help(self, message):
         await message.channel.send("; ".join(self.cmds))
@@ -209,31 +215,62 @@ class MothBot:
     async def corona_updater(self):
         await client.wait_until_ready()
         while not client.is_closed():
-            response = requests.get(r"https://services1.arcgis.com/0MSEUqKaxRlEPj5g/arcgis/rest/services/ncov_cases/FeatureServer/1/query?f=json&where=(Confirmed%20%3E%200)&returnGeometry=false&outFields=*&orderByFields=Recovered%20desc&resultOffset=0&resultRecordCount=500&cacheHint=true")
+            response = requests.get(r"https://www.worldometers.info/coronavirus/")
             if response.status_code == 200:
-                with open(my.m_path("corona\\world.json"), "wb") as fptr:
-                    fptr.write(response.content)
+                parsed = bs4.BeautifulSoup(response.content, "lxml")
+                vals = parsed.findAll("div", {"class":"maincounter-number"})
+                if len(vals) == 3:
+                    cases, dead, recovered = (x.text.strip() for x in vals)
+                    with open(my.m_path("corona\\world.json"), "w") as fptr:
+                        json.dump({"cases":cases, "dead":dead, "recovered":recovered, "updated":time.strftime(r"%B %d - %H:%M")}, fptr)
             response = requests.get(r"https://www.terviseamet.ee/et/uuskoroonaviirus")
-            p = r"koroonaviirusesse nakatunud (\d+)"
             if response.status_code == 200:
+                parsed = bs4.BeautifulSoup(response.content, "lxml")
+                e = parsed.find(string="OLUKORD EESTIS").findParent("div")
+                infected_container, dead_container = e.findChildren("div", recursive=False)[1:]
+                infected = infected_container.findAll("strong")[1].text.strip()
+                dead = dead_container.findAll("strong")[1].text.strip()
                 with open(my.m_path("corona\\eesti.txt"), "w") as fptr:
-                    fptr.write(re.findall(p, response.text)[0])
+                    fptr.write(f"{infected}:{dead}")
             await asyncio.sleep(120)
     
     async def corona(self, message):
         with open(my.m_path("corona\\world.json"), "r") as fptr:
             parsed = json.load(fptr)
-        total_infected = total_dead = 0
-        for feature in parsed["features"]:
-            attrs = feature["attributes"]
-            total_infected += attrs["Confirmed"]
-            total_dead += attrs["Deaths"]
         with open(my.m_path("corona\\eesti.txt"), "r") as fptr:
-            estonia_infected = fptr.read()
-        msg = [":biohazard: Koroona seis"]
-        for prefix, val in zip(("Kokku nakatanuid", "Kokku surnuid", "Eestis nakatanuid"), (total_infected, total_dead, estonia_infected)):
+            estonia_infected, estonia_dead = fptr.read().split(":")
+        msg = [f":biohazard: Koroona seis - uuendatud {parsed['updated']}"]
+        for prefix, val in zip(("Kokku nakatanuid", "Kokku surnuid", "Eestis nakatanuid", "Eestis surnuid"),
+                               (parsed["cases"], parsed["dead"], estonia_infected, estonia_dead)):
             msg.append(f"{prefix} <:monkas:418538700260114433> :point_right: {val}")
         await message.channel.send("\n".join(msg))
+
+    async def maku_live_checker(self):
+        await client.wait_until_ready()
+        previously_live = True
+        query = "https://api.twitch.tv/helix/streams?user_login=xmakuest"
+        headers = {"Client-ID": self.secrets["twitch_client_id"]}
+        while not client.is_closed():
+            r = requests.get(query, headers=headers)
+            if r.status_code == 200:
+                is_live = len(r.json()["data"]) > 0
+                if not previously_live and is_live:
+                    msg = "Maku on live :)\nhttps://www.twitch.tv/xmakuest"
+                    await client.get_channel(Channel.Grupiteraapia).send(msg)
+                previously_live = is_live
+            await asyncio.sleep(10)
+
+    async def wiki(self, message):
+        query = "https://en.wikipedia.org/wiki/" + " ".join(message.content.split(" ")[1:])
+        response = requests.get(query)
+        if response.status_code == 404:
+            await message.channel.send("Sellist artiklit ei leitud")
+        elif response.status_code == 200:
+            parsed = bs4.BeautifulSoup(response.content, "lxml")
+            real_url = "https://en.wikipedia.org/wiki/" + "_".join(parsed.find("h1", {"id":"firstHeading"}).text.strip().split(" "))
+            await message.channel.send(real_url)
+        else:
+            await message.channel.send(f"Error {response.status_code}, wiki on maas või mingi muu jama")
 
 mothbot = MothBot()
 
@@ -249,10 +286,7 @@ async def on_message(message):
     elif message.author.id != client.user.id:
         await mothbot.handle_message(message)
 
-with open(my.m_path("token.txt"), "r") as fptr:
-    token = fptr.read().strip()
-
 try:
-    client.run(token)
+    client.run(mothbot.secrets["token"])
 except discord.errors.LoginFailure:
     print("Connection to the Discord API was disrupted. Bad token?")

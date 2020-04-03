@@ -268,5 +268,14 @@ def build_userbase() -> Tuple[User]:
             "trump",
             emojis="<:trump:676223879345340451>",
             make_tokens_account=False
+        ),
+        User(
+            "rass",
+            id=111493163398471680,
+            emojis="<:ravi1:678624751505113108>"
+        ),
+        User(
+            "liis",
+            id=430046118051577860
         )
     )
