@@ -6,7 +6,7 @@ RELEVANT_CLASS = "wikitable sortable filterable item-drops autosort=4,a"
 URL = "https://oldschool.runescape.wiki/w/Lizardman_shaman"
 
 response = requests.get(URL)
-parsed = bs4.BeautifulSoup(response.content, "lxml")
+parsed = bs4.BeautifulSoup(response.content, "html.parser")
 
 data = list()
 tables = parsed.find_all("table", {"class":RELEVANT_CLASS})

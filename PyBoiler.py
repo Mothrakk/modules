@@ -35,7 +35,7 @@ class Log:
         """Display the log.
         
         Use the pipeline if `pipeline`, else print out the log."""
-        if pipeline:
+        if "-larva" in sys.argv and pipeline:
             file_write(pipe_path("larva"), self.build(), "a")
         else:
             print(self.build())

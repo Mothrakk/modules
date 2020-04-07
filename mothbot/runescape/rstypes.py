@@ -103,7 +103,7 @@ class StatCollection:
 
     def fetch(self, url: str) -> None:
         response = requests.get(url)
-        parsed = bs4.BeautifulSoup(response.content, "lxml")
+        parsed = bs4.BeautifulSoup(response.content, "html.parser")
         table = parsed.find("div", {"id":"contentHiscores"})
         relevant_rows = table.findAll("tr")[3:27]
         for r in relevant_rows:

@@ -217,7 +217,7 @@ class MothBot:
         while not client.is_closed():
             response = requests.get(r"https://www.worldometers.info/coronavirus/")
             if response.status_code == 200:
-                parsed = bs4.BeautifulSoup(response.content, "lxml")
+                parsed = bs4.BeautifulSoup(response.content, "html.parser")
                 vals = parsed.findAll("div", {"class":"maincounter-number"})
                 if len(vals) == 3:
                     cases, dead, recovered = (x.text.strip() for x in vals)
@@ -225,11 +225,11 @@ class MothBot:
                         json.dump({"cases":cases, "dead":dead, "recovered":recovered, "updated":time.strftime(r"%B %d - %H:%M")}, fptr)
             response = requests.get(r"https://www.terviseamet.ee/et/uuskoroonaviirus")
             if response.status_code == 200:
-                parsed = bs4.BeautifulSoup(response.content, "lxml")
+                parsed = bs4.BeautifulSoup(response.content, "html.parser")
                 e = parsed.find(string="OLUKORD EESTIS").findParent("div")
                 infected_container, dead_container = e.findChildren("div", recursive=False)[1:]
                 infected = infected_container.findAll("strong")[1].text.strip()
-                dead = dead_container.findAll("strong")[1].text.strip()
+                dead = dead_container.find("b").text.strip()
                 with open(my.m_path("corona\\eesti.txt"), "w") as fptr:
                     fptr.write(f"{infected}:{dead}")
             await asyncio.sleep(120)
@@ -266,7 +266,7 @@ class MothBot:
         if response.status_code == 404:
             await message.channel.send("Sellist artiklit ei leitud")
         elif response.status_code == 200:
-            parsed = bs4.BeautifulSoup(response.content, "lxml")
+            parsed = bs4.BeautifulSoup(response.content, "html.parser")
             real_url = "https://en.wikipedia.org/wiki/" + "_".join(parsed.find("h1", {"id":"firstHeading"}).text.strip().split(" "))
             await message.channel.send(real_url)
         else:
